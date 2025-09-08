@@ -3,13 +3,14 @@
 import type React from "react"
 
 import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { useAuth, hasPermission } from "@/lib/auth"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
+import { Link } from "react-router-dom"
+// import { usePathname } from "next/navigation"
+import { useLocation } from "react-router-dom";
+import { cn } from "../../../../lib/utils"
+import { useAuth, hasPermission } from "../../../../lib/auth"
+import { Button } from "../../../components/components/ui/button"
+import { ScrollArea } from "../../../components/components/ui/scroll-area"
+import { Separator } from "../../../components/components/ui/separator"
 import {
   Building2,
   Users,
@@ -101,7 +102,7 @@ const adminNavigation: NavItem[] = [
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const pathname = usePathname()
+  const pathname = useLocation().pathname
   const { user, logout } = useAuth()
 
   const filteredNavigation = navigation.filter((item) => !item.permission || hasPermission(user, item.permission))
@@ -153,7 +154,7 @@ export function Sidebar() {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                to={item.href}
                 className={cn(
                   "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                   isActive
@@ -192,7 +193,7 @@ export function Sidebar() {
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    to={item.href}
                     className={cn(
                       "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                       isActive

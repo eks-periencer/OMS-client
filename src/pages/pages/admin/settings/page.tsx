@@ -12,6 +12,7 @@ import { Badge } from "../../../../components/components/ui/badge"
 import { Settings, Clock, Bell, Save, RefreshCw } from "lucide-react"
 import { systemConfig } from "../../../../../lib/mock-data"
 
+
 export default function SystemSettingsPage() {
   const [config, setConfig] = useState({
     escalation: {

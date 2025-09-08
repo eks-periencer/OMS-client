@@ -3,11 +3,11 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Button } from "../../../../components/components/ui/button"
+import { Badge } from "../../../../components/components/ui/badge"
+import { Input } from "../../../../components/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -16,14 +16,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+} from "../../../../components/components/ui/dialog"
+import { Label } from "../../../../components/components/ui/label"
+import { Switch } from "../../../../components/components/ui/switch"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../components/components/ui/dropdown-menu"
 import { Users, Plus, Search, MoreHorizontal, Edit, Trash2, Key, UserCheck, UserX } from "lucide-react"
-import { mockUsers } from "@/lib/mock-data"
-import type { User } from "@/lib/types"
+import { mockUsers } from "../../../../../lib/mock-data"
+import type { User } from "../../../../../lib/types"
 
 const availableRoles = [
   { id: "1", name: "Super Administrator", permissions: ["*"] },

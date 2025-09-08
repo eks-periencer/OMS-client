@@ -3,13 +3,13 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../../../../lib/auth"
+import { Button } from "../../../components/components/ui/button"
+import { Input } from "../../../components/components/ui/input"
+import { Label } from "../../../components/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
+import { Alert, AlertDescription } from "../../../components/components/ui/alert"
 import { Building2, Loader2 } from "lucide-react"
 
 export default function LoginPage() {
@@ -19,7 +19,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
 
   const { login } = useAuth()
-  const router = useRouter()
+  const router = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

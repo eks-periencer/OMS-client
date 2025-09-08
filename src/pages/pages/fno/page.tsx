@@ -1,16 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Sidebar } from "../../../components/components/layout/sidebar"
+import { Button } from "../../../components/components/ui/button"
+import { Input } from "../../../components/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
+import { Badge } from "../../../components/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/components/ui/tabs"
 import { Plus, Search, Settings, Network, Activity, AlertCircle, CheckCircle, Clock } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router-dom"
 
 // Mock FNO data
 const mockFNOs = [

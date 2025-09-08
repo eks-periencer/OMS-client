@@ -1,12 +1,12 @@
 "use client"
 
-import { useAuth } from "@/lib/auth"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useAuth } from "../../../../lib/auth"
+import { Sidebar } from "../../../components/components/layout/sidebar"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
+import { Badge } from "../../../components/components/ui/badge"
+import { Button } from "../../../components/components/ui/button"
 import { Package, Users, AlertTriangle, Clock, Plus } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router-dom"
 
 // Mock data for dashboard
 const dashboardStats = {
