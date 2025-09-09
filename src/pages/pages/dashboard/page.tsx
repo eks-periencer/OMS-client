@@ -99,12 +99,13 @@ function getPriorityColor(priority: string) {
   }
 }
 
-export default function DashboardPage() {
-  const { user } = useAuth()
-
+export default function DashboardPage() 
+  const { user } = useAuth();
+  
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
+
 
       <main className="flex-1 overflow-auto min-w-0">
         <div className="p-6 container mx-auto min-w-0">

@@ -1,56 +1,79 @@
-"use client"
+"use client";
 
-import type React from "react"
+import React, { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { useAuth } from "../../../../lib/auth"
-import { Button } from "../../../components/components/ui/button"
-import { Input } from "../../../components/components/ui/input"
-import { Label } from "../../../components/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
-import { Alert, AlertDescription } from "../../../components/components/ui/alert"
-import { Building2, Loader2 } from "lucide-react"
+import { login } from "../../../toolkit/authSlice";
+import { auth, provider } from "../../../../lib/firebaseConfig.tsx";
+
+import { Button } from "../../../components/components/ui/button";
+import { Input } from "../../../components/components/ui/input";
+import { Label } from "../../../components/components/ui/label";
+import { Card } from "../../../components/components/ui/card";
+import { CardContent } from "../../../components/components/ui/card";
+import { CardDescription } from "../../../components/components/ui/card";
+import { CardHeader } from "../../../components/components/ui/card";
+import { CardTitle } from "../../../components/components/ui/card";
+import { Alert } from "../../../components/components/ui/alert";
+import { AlertDescription } from "../../../components/components/ui/alert";
+
+
+import { Building2, Loader2 } from "lucide-react";
+import { signInWithPopup } from "firebase/auth";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("admin@ispoms.com")
-  const [password, setPassword] = useState("google123")
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  
+  const dispatch = useDispatch<any>();
+  const navigate = useNavigate();
 
-  const { login } = useAuth()
-  const router = useNavigate()
+  const authState = useSelector((state: any) => state.authentication);
+  const { loading, error, isAuthenticated } = authState;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"email" | "google">("email");
 
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    dispatch(login({ method: "email", email, password }))
+      .unwrap()
+      .then(() => {
+        navigate("/dashboard");
+      })
+      .catch(() => {});
+  };
+
+  const handleGoogleLogin = async () => {
     try {
-      await login({ email, password })
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Invalid email or password")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const firebaseToken = await user.getIdToken();
 
-  const handleQuickLogin = async () => {
-    setEmail("admin@ispoms.com")
-    setPassword("google123")
-    setError("")
-    setIsLoading(true)
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      };
 
-    try {
-      await login({ email: "admin@ispoms.com", password: "google123" })
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Login failed")
-    } finally {
-      setIsLoading(false)
+      dispatch(
+        login({
+          method: "google",
+          idToken: firebaseToken,
+          deviceInfo,
+        })
+      )
+        .unwrap()
+        .then(() => {
+          navigate("/dashboard");
+        })
+        .catch(() => {});
+    } catch (err: any) {
+      console.error("Google login failed", err.message);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -60,67 +83,87 @@ export default function LoginPage() {
             <Building2 className="h-12 w-12 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">ISP Order Management</CardTitle>
-          <CardDescription>Sign in to access the order management system</CardDescription>
+          <CardDescription>
+            Sign in to access the order management system
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
+          {mode === "email" ? (
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign In
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setMode("google")}
+              >
+                Use Google instead
+              </Button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                type="button"
+                className="w-full bg-white text-black"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Continue with Google
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setMode("email")}
+              >
+                Use Email instead
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Google password (google123)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full bg-transparent"
-              onClick={handleQuickLogin}
-              disabled={isLoading}
-            >
-              Quick Demo Login
-            </Button>
-          </form>
-
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground mb-2">Demo Credentials:</p>
-            <p className="text-xs font-mono">Email: admin@ispoms.com</p>
-            <p className="text-xs font-mono">Password: google123</p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Use the Google placeholder password "google123" for any account
-            </p>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

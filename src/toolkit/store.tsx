@@ -1,10 +1,15 @@
+// toolkit/store.ts
 import { configureStore } from '@reduxjs/toolkit';
-import testReducer from './testSlice';
+import { authReducer } from './authSlice';
 
-const store = configureStore({
+export const store = configureStore({
   reducer: {
-    digit: testReducer,
+    authentication: authReducer,
   },
 });
+
+// ✅ Add this
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
 
 export default store;
