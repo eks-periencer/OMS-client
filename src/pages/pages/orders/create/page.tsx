@@ -1,19 +1,17 @@
-"use client"
-
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useNavigate } from "react-router-dom"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Input } from "../../../../components/components/ui/input"
+import { Label } from "../../../../components/components/ui/label"
+import { Textarea } from "../../../../components/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/components/ui/select"
+import { Alert, AlertDescription } from "../../../../components/components/ui/alert"
 import { ArrowLeft, Save, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router-dom"
 
 const mockCustomers = [
   { id: "1", name: "John Smith", email: "john@example.com" },
@@ -22,7 +20,7 @@ const mockCustomers = [
 ]
 
 export default function CreateOrderPage() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -49,7 +47,7 @@ export default function CreateOrderPage() {
       // Mock order creation
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      router.push("/orders")
+      navigate("/orders")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create order")
     } finally {
@@ -64,13 +62,13 @@ export default function CreateOrderPage() {
       <main className="flex-1 overflow-auto">
         <div className="p-6">
           <div className="flex items-center space-x-4 mb-6">
-            <Link href="/orders">
+            <Link to="/orders">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Orders
               </Button>
             </Link>
-            <div>
+            <div className="ml-60">
               <h1 className="text-3xl font-bold text-foreground">Create New Order</h1>
               <p className="text-muted-foreground">Create a new customer service order</p>
             </div>
@@ -129,7 +127,7 @@ export default function CreateOrderPage() {
                     id="servicePackage"
                     placeholder="e.g., Premium 100Mbps"
                     value={servicePackage}
-                    onChange={(e) => setServicePackage(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServicePackage(e.target.value)}
                     required
                   />
                 </div>
@@ -164,7 +162,7 @@ export default function CreateOrderPage() {
                     id="street"
                     placeholder="123 Main Street"
                     value={street}
-                    onChange={(e) => setStreet(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStreet(e.target.value)}
                     required
                   />
                 </div>
@@ -175,7 +173,7 @@ export default function CreateOrderPage() {
                       id="city"
                       placeholder="Cape Town"
                       value={city}
-                      onChange={(e) => setCity(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
                       required
                     />
                   </div>
@@ -199,7 +197,7 @@ export default function CreateOrderPage() {
                     id="postalCode"
                     placeholder="8001"
                     value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPostalCode(e.target.value)}
                     required
                   />
                 </div>
@@ -219,7 +217,7 @@ export default function CreateOrderPage() {
                     id="notes"
                     placeholder="Any special instructions..."
                     value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
                     rows={3}
                   />
                 </div>
@@ -233,7 +231,7 @@ export default function CreateOrderPage() {
             )}
 
             <div className="flex justify-end space-x-4">
-              <Link href="/orders">
+              <Link to="/orders">
                 <Button variant="outline" disabled={isLoading}>
                   Cancel
                 </Button>

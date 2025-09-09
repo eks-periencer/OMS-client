@@ -1,16 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Sidebar } from "../../../components/components/layout/sidebar"
+import { Button } from "../../../components/components/ui/button"
+import { Input } from "../../../components/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
+import { Badge } from "../../../components/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
 import { Plus, Search, Eye, Edit, MoreHorizontal, Users, UserCheck, Clock } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import Link from "next/link"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/components/ui/dropdown-menu"
+import {Link} from "react-router-dom"
 
 // Mock customers data
 const mockCustomers = [
@@ -119,7 +119,7 @@ export default function CustomersPage() {
               <h1 className="text-3xl font-bold text-foreground">Customers</h1>
               <p className="text-muted-foreground">Manage customer accounts and information</p>
             </div>
-            <Link href="/customers/create">
+            <Link to="/customers/create">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Customer
@@ -128,7 +128,7 @@ export default function CustomersPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-4 gap-4 mb-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
@@ -285,13 +285,13 @@ export default function CustomersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
-                                <Link href={`/customers/${customer.id}`}>
+                                <Link to={`/customers/${customer.id}`}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/customers/${customer.id}/edit`}>
+                                <Link to={`/customers/${customer.id}/edit`}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Customer
                                 </Link>

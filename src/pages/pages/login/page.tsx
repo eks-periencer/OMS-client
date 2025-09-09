@@ -23,6 +23,7 @@ import { Building2, Loader2 } from "lucide-react";
 import { signInWithPopup } from "firebase/auth";
 
 export default function LoginPage() {
+  
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
 

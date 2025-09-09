@@ -84,13 +84,13 @@ const navigation: NavItem[] = [
 const adminNavigation: NavItem[] = [
   {
     title: "User Management",
-    href: "/admin/users",
+    href: "/users",
     icon: Users,
     permission: "admin:manage_users",
   },
   {
     title: "System Settings",
-    href: "/admin/settings",
+    href: "/settings",
     icon: Settings,
     permission: "admin:system_config",
   },

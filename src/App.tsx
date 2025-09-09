@@ -7,9 +7,14 @@ import OnboardingPage from './pages/pages/onboarding/page.tsx'
 import SettingsPage from './pages/pages/admin/settings/page.tsx'
 import ApplicationAdminPage from './pages/pages/application-admin/page.tsx'
 import FNOAdminPage from './pages/pages/fno/page.tsx'
-// import ReportsPage from './pages/pages/reports/page.tsx'
+import Customers from './pages/pages/customers/page.tsx'
+import Orders from './pages/pages/orders/page.tsx'
+import ReportsPage from './pages/pages/reports/page.tsx'
 import UsersPage from './pages/pages/admin/users/page.tsx'
 import LoginPage from './pages/pages/login/page.tsx'
+import Escalations from './pages/pages/escalations/page.tsx'
+import OrderCreate from './pages/pages/orders/create/page.tsx'
+import CustomerCreate from './pages/pages/customers/create/page.tsx'
 // import RegisterPage from './pages/pages/register/page.tsx'
 // import ForgotPasswordPage from './pages/pages/forgot-password/page.tsx'
 // import ResetPasswordPage from './pages/pages/reset-password/page.tsx'
@@ -28,10 +33,15 @@ function App() {
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/application-admin" element={<ApplicationAdminPage />} />
-          <Route path="/fno-admin" element={<FNOAdminPage />} />
-          {/* <Route path="/reports" element={<ReportsPage />} /> */}
+          <Route path="/fno" element={<FNOAdminPage />} />
+          <Route path="/escalations" element={<Escalations/>} />
+          <Route path="/customers" element={<Customers/>} />
+          <Route path="/orders" element={<Orders/>} />
+          <Route path="/reports" element={<ReportsPage />} /> 
           <Route path="/users" element={<UsersPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path='/orders/create' element={<OrderCreate/>} />
+          <Route path='/customers/create' element={<CustomerCreate/>} />
           {/* <Route path="/register" element={<RegisterPage />} /> */}
           {/* <Route path="/forgot-password" element={<ForgotPasswordPage />} /> */}
           {/* <Route path="/reset-password" element={<ResetPasswordPage />} /> */}

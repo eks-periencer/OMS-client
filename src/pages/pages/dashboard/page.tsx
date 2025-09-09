@@ -1,11 +1,12 @@
-import { useAuth } from "../../../../lib/auth";
-import { Sidebar } from "../../../components/components/layout/sidebar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card";
-import { Badge } from "../../../components/components/ui/badge";
-import { Button } from "../../../components/components/ui/button";
-import { Package, Users, AlertTriangle, Clock, Plus } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
+"use client"
+
+import { useAuth } from "../../../../lib/auth"
+import { Sidebar } from "../../../components/components/layout/sidebar"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
+import { Badge } from "../../../components/components/ui/badge"
+import { Button } from "../../../components/components/ui/button"
+import { Package, Users, AlertTriangle, Clock, Plus } from "lucide-react"
+import { Link } from "react-router-dom"
 
 // Mock data for dashboard
 const dashboardStats = {
@@ -15,7 +16,7 @@ const dashboardStats = {
   trialCustomers: 34,
   todayOrders: 23,
   completionRate: 94.2,
-};
+}
 
 const recentOrders = [
   {
@@ -45,7 +46,7 @@ const recentOrders = [
     priority: "urgent",
     createdAt: "2025-01-09T08:45:00Z",
   },
-];
+]
 
 const pendingEscalations = [
   {
@@ -64,188 +65,137 @@ const pendingEscalations = [
     level: 1,
     agingHours: 3,
   },
-];
-
+]
 
 function getStatusColor(status: string) {
   switch (status) {
     case "completed":
-      return "bg-green-100 text-green-800";
-      case "in_progress":
-      return "bg-blue-100 text-blue-800";
+      return "bg-green-100 text-green-800"
+    case "in_progress":
+      return "bg-blue-100 text-blue-800"
     case "fno_submitted":
-      return "bg-yellow-100 text-yellow-800";
+      return "bg-yellow-100 text-yellow-800"
     case "installation_scheduled":
-      return "bg-purple-100 text-purple-800";
+      return "bg-purple-100 text-purple-800"
     case "cancelled":
-      return "bg-red-100 text-red-800";
+      return "bg-red-100 text-red-800"
     default:
-      return "bg-gray-100 text-gray-800";
+      return "bg-gray-100 text-gray-800"
   }
 }
 
 function getPriorityColor(priority: string) {
   switch (priority) {
     case "urgent":
-      return "bg-red-100 text-red-800";
+      return "bg-red-100 text-red-800"
     case "high":
-      return "bg-orange-100 text-orange-800";
+      return "bg-orange-100 text-orange-800"
     case "normal":
-      return "bg-blue-100 text-blue-800";
+      return "bg-blue-100 text-blue-800"
     case "low":
-      return "bg-gray-100 text-gray-800";
+      return "bg-gray-100 text-gray-800"
     default:
-      return "bg-gray-100 text-gray-800";
+      return "bg-gray-100 text-gray-800"
   }
 }
 
-export default function DashboardPage() {
+export default function DashboardPage() 
   const { user } = useAuth();
   
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen bg-background">
       <Sidebar />
 
-      <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-          <div className="flex items-center justify-between h-16 px-6 lg:px-8">
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Dashboard
-              </h1>
-              <p className="text-sm text-muted-foreground hidden sm:block">
-                Welcome back, {user?.firstName}! Here's what's happening today.
-              </p>
+
+      <main className="flex-1 overflow-auto min-w-0">
+        <div className="p-6 container mx-auto min-w-0">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+              <p className="text-muted-foreground">Welcome back, {user?.firstName}! Here's what's happening today.</p>
             </div>
             <Link to="/orders/create">
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Create Order</span>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Order
               </Button>
             </Link>
           </div>
-        </header>
 
-        {/* Main Content */}
-        <div className="p-6 lg:p-8 space-y-8">
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-            <Card className="relative overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-sm font-medium text-card-foreground">
-                  Total Orders
-                </CardTitle>
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                  <Package className="h-5 w-5 text-primary" />
-                </div>
+          <div className="grid [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))] gap-6 mb-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="text-3xl font-bold text-card-foreground">
-                  {dashboardStats.totalOrders.toLocaleString()}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  +{dashboardStats.todayOrders} today
-                </p>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.totalOrders}</div>
+                <p className="text-xs text-muted-foreground">+{dashboardStats.todayOrders} today</p>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-sm font-medium text-card-foreground">
-                  Active Orders
-                </CardTitle>
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100">
-                  <Clock className="h-5 w-5 text-blue-600" />
-                </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="text-3xl font-bold text-card-foreground">
-                  {dashboardStats.activeOrders}
-                </div>
-                <p className="text-sm text-muted-foreground">In progress</p>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.activeOrders}</div>
+                <p className="text-xs text-muted-foreground">In progress</p>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-sm font-medium text-card-foreground">
-                  Escalations
-                </CardTitle>
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-orange-100">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Escalations</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="text-3xl font-bold text-card-foreground">
-                  {dashboardStats.pendingEscalations}
-                </div>
-                <p className="text-sm text-muted-foreground">Pending resolution</p>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.pendingEscalations}</div>
+                <p className="text-xs text-muted-foreground">Pending resolution</p>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="text-sm font-medium text-card-foreground">
-                  Trial Customers
-                </CardTitle>
-                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-green-100">
-                  <Users className="h-5 w-5 text-green-600" />
-                </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Trial Customers</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="text-3xl font-bold text-card-foreground">
-                  {dashboardStats.trialCustomers}
-                </div>
-                <p className="text-sm text-muted-foreground">Active trials</p>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.trialCustomers}</div>
+                <p className="text-xs text-muted-foreground">Active trials</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Content Grid */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
+          <div className="grid [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))] gap-6">
             {/* Recent Orders */}
-            <Card className="flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <CardTitle className="text-lg font-semibold">Recent Orders</CardTitle>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Orders</CardTitle>
                 <CardDescription>Latest orders in the system</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <div className="space-y-3">
+              <CardContent>
+                <div className="space-y-4">
                   {recentOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="font-medium text-sm truncate">
-                            {order.orderNumber}
-                          </span>
-                          <Badge
-                            className={`${getPriorityColor(order.priority)} text-xs`}
-                          >
-                            {order.priority}
-                          </Badge>
+                    <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="font-medium">{order.orderNumber}</span>
+                          <Badge className={getPriorityColor(order.priority)}>{order.priority}</Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {order.customer}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {order.serviceType}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{order.customer}</p>
+                        <p className="text-xs text-muted-foreground">{order.serviceType}</p>
                       </div>
-                      <Badge
-                        className={`${getStatusColor(order.status)} ml-3 whitespace-nowrap text-xs`}
-                      >
-                        {order.status.replace("_", " ")}
-                      </Badge>
+                      <Badge className={getStatusColor(order.status)}>{order.status.replace("_", " ")}</Badge>
                     </div>
                   ))}
                 </div>
-                <div className="pt-4 border-t border-border">
-                  <Link to="/orders" className="block">
-                    <Button variant="outline" className="w-full">
+                <div className="mt-4">
+                  <Link to="/orders">
+                    <Button variant="outline" className="w-full bg-transparent">
                       View All Orders
                     </Button>
                   </Link>
@@ -254,39 +204,28 @@ export default function DashboardPage() {
             </Card>
 
             {/* Pending Escalations */}
-            <Card className="flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <CardTitle className="text-lg font-semibold">Pending Escalations</CardTitle>
+            <Card>
+              <CardHeader>
+                <CardTitle>Pending Escalations</CardTitle>
                 <CardDescription>Orders requiring immediate attention</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <div className="space-y-3">
+              <CardContent>
+                <div className="space-y-4">
                   {pendingEscalations.map((escalation) => (
-                    <div
-                      key={escalation.id}
-                      className="p-4 border border-orange-200 rounded-lg bg-orange-50 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">
-                          {escalation.orderNumber}
-                        </span>
-                        <Badge variant="destructive" className="text-xs">
-                          Level {escalation.level}
-                        </Badge>
+                    <div key={escalation.id} className="p-3 border rounded-lg border-orange-200 bg-orange-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium">{escalation.orderNumber}</span>
+                        <Badge variant="destructive">Level {escalation.level}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {escalation.customer}
-                      </p>
-                      <p className="text-sm text-gray-800">{escalation.reason}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Aging: {escalation.agingHours} hours
-                      </p>
+                      <p className="text-sm text-muted-foreground mb-1">{escalation.customer}</p>
+                      <p className="text-sm">{escalation.reason}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Aging: {escalation.agingHours} hours</p>
                     </div>
                   ))}
                 </div>
-                <div className="pt-4 border-t border-border">
-                  <Link to="/escalations" className="block">
-                    <Button variant="outline" className="w-full">
+                <div className="mt-4">
+                  <Link to="/escalations">
+                    <Button variant="outline" className="w-full bg-transparent">
                       View All Escalations
                     </Button>
                   </Link>
@@ -297,5 +236,5 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
-  );
+  )
 }
