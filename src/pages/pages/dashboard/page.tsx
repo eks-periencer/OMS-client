@@ -100,7 +100,6 @@ function getPriorityColor(priority: string) {
 }
 
 export default function DashboardPage() {
-  const digit = useSelector((state: any) => state.digit.digit);
   const { user } = useAuth();
   
   return (
@@ -113,7 +112,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between h-16 px-6 lg:px-8">
             <div className="flex flex-col">
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Dashboard {digit}
+                Dashboard
               </h1>
               <p className="text-sm text-muted-foreground hidden sm:block">
                 Welcome back, {user?.firstName}! Here's what's happening today.
