@@ -24,6 +24,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/application-admin" element={<ApplicationAdminPage />} />

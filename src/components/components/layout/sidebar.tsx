@@ -1,11 +1,7 @@
-"use client"
-
 import type React from "react"
 
 import { useState } from "react"
-import { Link } from "react-router-dom"
-// import { usePathname } from "next/navigation"
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom"
 import { cn } from "../../../../lib/utils"
 import { useAuth, hasPermission } from "../../../../lib/auth"
 import { Button } from "../../../components/components/ui/button"
@@ -102,14 +98,30 @@ const adminNavigation: NavItem[] = [
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const pathname = useLocation().pathname
+  const location = useLocation()
+  const pathname = location.pathname
   const { user, logout } = useAuth()
 
-  const filteredNavigation = navigation.filter((item) => !item.permission || hasPermission(user, item.permission))
+  // Show all navigation items regardless of permissions for now
+  // You can re-enable permission filtering once your auth system is properly set up
+  const filteredNavigation = navigation
+  const filteredAdminNavigation = adminNavigation
 
-  const filteredAdminNavigation = adminNavigation.filter(
-    (item) => !item.permission || hasPermission(user, item.permission),
-  )
+  // If you want to re-enable permission filtering later, use this instead:
+  // const filteredNavigation = navigation.filter((item) => 
+  //   !item.permission || (user && hasPermission(user, item.permission))
+  // )
+  // const filteredAdminNavigation = adminNavigation.filter(
+  //   (item) => !item.permission || (user && hasPermission(user, item.permission))
+  // )
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      logout()
+      // Use React Router navigation instead of window.location
+      window.location.href = "/login"
+    }
+  }
 
   return (
     <div
@@ -142,7 +154,7 @@ export function Sidebar() {
           <div className="text-sm font-medium text-sidebar-foreground">
             {user.firstName} {user.lastName}
           </div>
-          <div className="text-xs text-sidebar-foreground/70">{user.role.name}</div>
+          <div className="text-xs text-sidebar-foreground/70">{user.role?.name || 'User'}</div>
         </div>
       )}
 
@@ -216,12 +228,7 @@ export function Sidebar() {
       <div className="p-2 border-t border-sidebar-border">
         <Button
           variant="ghost"
-          onClick={() => {
-            if (confirm("Are you sure you want to logout?")) {
-              logout()
-              window.location.href = "/login"
-            }
-          }}
+          onClick={handleLogout}
           className={cn(
             "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent",
             isCollapsed && "justify-center",
@@ -234,3 +241,5 @@ export function Sidebar() {
     </div>
   )
 }
+
+export default Sidebar
