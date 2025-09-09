@@ -1,16 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Sidebar } from "../../../components/components/layout/sidebar"
+import { Button } from "../../../components/components/ui/button"
+import { Input } from "../../../components/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
+import { Badge } from "../../../components/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
 import { Plus, Search, Eye, Edit, MoreHorizontal } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import Link from "next/link"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/components/ui/dropdown-menu"
+import {Link} from "react-router-dom"
 
 // Mock orders data
 const mockOrders = [
