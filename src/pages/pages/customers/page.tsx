@@ -119,7 +119,7 @@ export default function CustomersPage() {
               <h1 className="text-3xl font-bold text-foreground">Customers</h1>
               <p className="text-muted-foreground">Manage customer accounts and information</p>
             </div>
-            <Link href="/customers/create">
+            <Link to="/customers/create">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Customer
@@ -285,13 +285,13 @@ export default function CustomersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem asChild>
-                                <Link href={`/customers/${customer.id}`}>
+                                <Link to={`/customers/${customer.id}`}>
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/customers/${customer.id}/edit`}>
+                                <Link to={`/customers/${customer.id}/edit`}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Customer
                                 </Link>

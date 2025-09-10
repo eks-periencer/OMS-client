@@ -3,19 +3,19 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useNavigate } from "react-router-dom"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Input } from "../../../../components/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/components/ui/select"
+import { Textarea } from "../../../../components/components/ui/textarea"
+import { Checkbox } from "../../../../components/components/ui/checkbox"
 import { ArrowLeft, Save, User } from "lucide-react"
-import Link from "next/link"
+import {Link} from "react-router-dom"
 
 export default function CreateCustomerPage() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
@@ -72,7 +72,7 @@ export default function CreateCustomerPage() {
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
-            <Link href="/customers">
+            <Link to="/customers">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Customers
@@ -243,7 +243,7 @@ export default function CreateCustomerPage() {
 
             {/* Actions */}
             <div className="flex justify-end gap-4 mt-6">
-              <Link href="/customers">
+              <Link to="/customers">
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>
