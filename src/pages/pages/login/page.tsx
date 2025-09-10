@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from "../../../components/components/ui/alert
 import { Building2, Loader2 } from "lucide-react"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState("admin@ispoms.com")
   const [password, setPassword] = useState("google123")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)

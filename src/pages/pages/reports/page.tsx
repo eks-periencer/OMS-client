@@ -2,6 +2,7 @@
 
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Button } from "../../../components/components/ui/button"
+import { AlertTriangle, BarChart3, Download, Package, Timer, Users } from "lucide-react"
 
 export default function ReportsPage() {
   const reports = [
@@ -12,10 +13,10 @@ export default function ReportsPage() {
   ]
 
   const metrics = [
-    { label: "Total Orders", value: "1,247", change: "+12%" },
-    { label: "Active Customers", value: "892", change: "+8%" },
-    { label: "Avg Processing Time", value: "2.3 days", change: "-15%" },
-    { label: "Open Escalations", value: "23", change: "-5%" },
+    { label: "Total Orders", value: "1,247", change: "+12%", icon: Package },
+    { label: "Active Customers", value: "892", change: "+8%", icon: Users },
+    { label: "Avg Processing Time", value: "2.3 days", change: "-15%", icon: Timer },
+    { label: "Open Escalations", value: "23", change: "-5%", icon: AlertTriangle },
   ]
 
   return (
@@ -28,14 +29,20 @@ export default function ReportsPage() {
               <h1 className="text-3xl font-bold tracking-tight">Reports & Analytics</h1>
               <p className="text-muted-foreground">Generate and view system performance reports</p>
             </div>
-            <Button variant="outline">Generate Custom Report</Button>
+            <Button variant="outline" className="gap-2"><BarChart3 className="h-4 w-4" /> Generate Custom Report</Button>
           </div>
 
-          <div className="grid [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))] gap-4">
+          <div className="grid [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))] gap-3">
             {metrics.map((metric) => (
               <div key={metric.label} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between pb-2">
                   <div className="text-sm font-medium">{metric.label}</div>
+                  <div className="h-7 w-7 rounded-full border flex items-center justify-center text-muted-foreground">
+                    {(() => {
+                      const Icon = metric.icon
+                      return <Icon className="h-4 w-4" />
+                    })()}
+                  </div>
                 </div>
                 <div className="text-2xl font-bold">{metric.value}</div>
                 <p className="text-xs text-muted-foreground">
@@ -52,7 +59,7 @@ export default function ReportsPage() {
               <Button variant="outline">Custom Reports</Button>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {reports.map((report) => (
                 <div key={report.id} className="rounded-lg border">
                   <div className="p-4 border-b">
@@ -62,9 +69,15 @@ export default function ReportsPage() {
                         <div className="text-sm text-muted-foreground">{report.description}</div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs border rounded-full px-2 py-0.5">{report.status}</span>
+                        <span className={
+                          report.status === "Ready"
+                            ? "text-xs rounded-full px-2.5 py-0.5 border border-emerald-200 bg-emerald-100 text-emerald-700 font-medium"
+                            : "text-xs rounded-full px-2.5 py-0.5 border bg-muted text-muted-foreground"
+                        }>
+                          {report.status}
+                        </span>
                         {report.status === "Ready" && (
-                          <Button variant="outline" size="sm">Download</Button>
+                          <Button variant="outline" size="sm" className="gap-2"><Download className="h-4 w-4" /> Download</Button>
                         )}
                       </div>
                     </div>

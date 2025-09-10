@@ -105,7 +105,7 @@ const mockIntegrationLogs = [
 
 const fnoStats = {
   totalFNOs: 4,
-  activeFNOs: 3,
+  activeFNOs: 1,
   apiIntegrations: 2,
   manualIntegrations: 2,
   totalOrders: 324,
@@ -182,7 +182,7 @@ export default function FNOPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
 
       <main className="flex-1 overflow-auto">
@@ -190,11 +190,11 @@ export default function FNOPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">FNO Management</h1>
-              <p className="text-muted-foreground">Manage Fiber Network Operator integrations and configurations</p>
+              <h1 className="text-3xl font-bold text-gray-900">FNO Management</h1>
+              <p className="text-gray-600">Manage Fiber Network Operator integrations and configurations</p>
             </div>
-            <Link href="/fno/create">
-              <Button>
+            <Link to="/fno/create">
+              <Button className="bg-black text-white hover:bg-gray-800">
                 <Plus className="mr-2 h-4 w-4" />
                 Add FNO
               </Button>
@@ -202,82 +202,82 @@ export default function FNOPage() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <Card>
+          <div className="grid grid-cols-4 gap-6 mb-6">
+            <Card className="bg-white shadow-sm border border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total FNOs</CardTitle>
-                <Network className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-gray-700">Total FNOs</CardTitle>
+                <Network className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fnoStats.totalFNOs}</div>
-                <p className="text-xs text-muted-foreground">{fnoStats.activeFNOs} active</p>
+                <div className="text-2xl font-bold text-gray-900">{fnoStats.totalFNOs}</div>
+                <p className="text-xs text-gray-500">{fnoStats.activeFNOs} active</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white shadow-sm border border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">API Integrations</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-gray-700">API Integrations</CardTitle>
+                <Activity className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fnoStats.apiIntegrations}</div>
-                <p className="text-xs text-muted-foreground">{fnoStats.manualIntegrations} manual</p>
+                <div className="text-2xl font-bold text-gray-900">{fnoStats.apiIntegrations}</div>
+                <p className="text-xs text-gray-500">{fnoStats.manualIntegrations} manual</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white shadow-sm border border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Orders Processed</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-gray-700">Orders Processed</CardTitle>
+                <Clock className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fnoStats.totalOrders}</div>
-                <p className="text-xs text-muted-foreground">This month</p>
+                <div className="text-2xl font-bold text-gray-900">{fnoStats.totalOrders}</div>
+                <p className="text-xs text-gray-500">this month</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white shadow-sm border border-gray-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-gray-700">Success Rate</CardTitle>
+                <Activity className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fnoStats.averageSuccessRate}%</div>
-                <p className="text-xs text-muted-foreground">Average</p>
+                <div className="text-2xl font-bold text-gray-900">{fnoStats.averageSuccessRate}%</div>
+                <p className="text-xs text-gray-500">average</p>
               </CardContent>
             </Card>
           </div>
 
           <Tabs defaultValue="fnos" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="fnos">FNO Configuration</TabsTrigger>
-              <TabsTrigger value="logs">Integration Logs</TabsTrigger>
-              <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+            <TabsList className="bg-white">
+              <TabsTrigger value="fnos" className="data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900">FNO Configuration</TabsTrigger>
+              <TabsTrigger value="logs" className="data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900">Integration Logs</TabsTrigger>
+              <TabsTrigger value="monitoring" className="data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900">Monitoring</TabsTrigger>
             </TabsList>
 
             <TabsContent value="fnos" className="space-y-6">
               {/* Filters */}
-              <Card>
+              <Card className="bg-white shadow-sm border border-gray-200">
                 <CardHeader>
-                  <CardTitle>Filters</CardTitle>
-                  <CardDescription>Search and filter FNO configurations</CardDescription>
+                  <CardTitle className="text-gray-800">Filters</CardTitle>
+                  <CardDescription className="text-gray-500">Search and filter FNO configurations</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                         <Input
                           placeholder="Search FNOs..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
+                          className="pl-10 bg-white border-gray-200 text-gray-700 placeholder-gray-400"
                         />
                       </div>
                     </div>
                     <Select value={typeFilter} onValueChange={setTypeFilter}>
-                      <SelectTrigger className="w-full md:w-48">
-                        <SelectValue placeholder="Filter by type" />
+                      <SelectTrigger className="w-full md:w-48 bg-white border-gray-200 text-gray-700">
+                        <SelectValue placeholder="All Types" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Types</SelectItem>
@@ -286,8 +286,8 @@ export default function FNOPage() {
                       </SelectContent>
                     </Select>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full md:w-48">
-                        <SelectValue placeholder="Filter by status" />
+                      <SelectTrigger className="w-full md:w-48 bg-white border-gray-200 text-gray-700">
+                        <SelectValue placeholder="All Statuses" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
@@ -302,38 +302,38 @@ export default function FNOPage() {
               </Card>
 
               {/* FNO Table */}
-              <Card>
+              <Card className="bg-white shadow-sm border border-gray-200">
                 <CardHeader>
-                  <CardTitle>FNO Configurations ({filteredFNOs.length})</CardTitle>
+                  <CardTitle className="text-gray-800">FNO Configurations ({filteredFNOs.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>FNO</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Coverage Areas</TableHead>
-                        <TableHead>Orders</TableHead>
-                        <TableHead>Success Rate</TableHead>
-                        <TableHead>Last Sync</TableHead>
-                        <TableHead>Actions</TableHead>
+                      <TableRow className="border-gray-200">
+                        <TableHead className="text-gray-700 font-medium">FNO</TableHead>
+                        <TableHead className="text-gray-700 font-medium">Type</TableHead>
+                        <TableHead className="text-gray-700 font-medium">Status</TableHead>
+                        <TableHead className="text-gray-700 font-medium">Coverage Areas</TableHead>
+                        <TableHead className="text-gray-700 font-medium">Orders</TableHead>
+                        <TableHead className="text-gray-700 font-medium">Success Rate</TableHead>
+                        <TableHead className="text-gray-700 font-medium">Last Sync</TableHead>
+                        <TableHead className="text-gray-700 font-medium">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredFNOs.map((fno) => (
-                        <TableRow key={fno.id}>
+                        <TableRow key={fno.id} className="border-gray-200">
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               {getStatusIcon(fno.status)}
                               <div>
-                                <div className="font-medium">{fno.name}</div>
-                                <div className="text-sm text-muted-foreground">{fno.code}</div>
+                                <div className="font-bold text-gray-900">{fno.name}</div>
+                                <div className="text-sm text-gray-500">{fno.code}</div>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="capitalize">
+                            <Badge variant="outline" className="capitalize border-gray-200 text-gray-700 bg-gray-50">
                               {fno.integrationType}
                             </Badge>
                           </TableCell>
@@ -341,35 +341,35 @@ export default function FNOPage() {
                             <Badge className={getStatusColor(fno.status)}>{fno.status}</Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">
+                            <div className="text-sm text-gray-800">
                               {fno.coverageAreas.slice(0, 2).join(", ")}
-                              {fno.coverageAreas.length > 2 && ` +${fno.coverageAreas.length - 2} more`}
+                              {fno.coverageAreas.length > 2 && ` + ${fno.coverageAreas.length - 2} more`}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm font-medium">{fno.ordersSubmitted}</div>
+                            <div className="text-sm font-medium text-gray-900">{fno.ordersSubmitted}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{fno.successRate}%</div>
+                            <div className="text-sm text-gray-800">{fno.successRate}%</div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">
+                            <div className="text-sm text-gray-800">
                               {fno.lastSync ? new Date(fno.lastSync).toLocaleDateString() : "N/A"}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              <Link href={`/fno/${fno.id}`}>
-                                <Button variant="ghost" size="sm">
+                              <Link to={`/fno/${fno.id}`}>
+                                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
                                   <Settings className="h-4 w-4" />
                                 </Button>
                               </Link>
                               {fno.integrationType === "api" && (
                                 <>
-                                  <Button variant="ghost" size="sm" onClick={() => handleTestConnection(fno.id)}>
+                                  <Button variant="ghost" size="sm" onClick={() => handleTestConnection(fno.id)} className="text-gray-800 hover:text-gray-900">
                                     Test
                                   </Button>
-                                  <Button variant="ghost" size="sm" onClick={() => handleSyncStatus(fno.id)}>
+                                  <Button variant="ghost" size="sm" onClick={() => handleSyncStatus(fno.id)} className="text-gray-800 hover:text-gray-900">
                                     Sync
                                   </Button>
                                 </>
