@@ -3,7 +3,7 @@ import type React from "react"
 import { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "../../../../lib/utils"
-import { useAuth, hasPermission } from "../../../../lib/auth"
+import { useSelector, useDispatch } from "react-redux"
 import { Button } from "../../../components/components/ui/button"
 import { ScrollArea } from "../../../components/components/ui/scroll-area"
 import { Separator } from "../../../components/components/ui/separator"
@@ -22,6 +22,7 @@ import {
   FileText,
   Network,
 } from "lucide-react"
+import { logout } from "../../../toolkit/authSlice"
 
 interface NavItem {
   title: string
@@ -100,7 +101,13 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const location = useLocation()
   const pathname = location.pathname
-  const { user, logout } = useAuth()
+  // const { user, logout } = 
+  
+  const user = useSelector((state)=> state.authentication.user)
+
+  
+  console.log(`user: ${user}`)
+  const dispatch = useDispatch()
 
   // Show all navigation items regardless of permissions for now
   // You can re-enable permission filtering once your auth system is properly set up
@@ -117,7 +124,7 @@ export function Sidebar() {
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      logout()
+      dispatch(logout())
       // Use React Router navigation instead of window.location
       window.location.href = "/login"
     }

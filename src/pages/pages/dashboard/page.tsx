@@ -99,7 +99,7 @@ function getPriorityColor(priority: string) {
   }
 }
 
-export default function DashboardPage() 
+export default function DashboardPage() {
   const { user } = useAuth();
   
   return (
