@@ -1,12 +1,12 @@
 "use client"
-import { useParams } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useParams } from "react-router-dom"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Badge } from "../../../../components/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/components/ui/tabs"
 import { ArrowLeft, Edit, Clock, MapPin, User, Package, Network, AlertTriangle } from "lucide-react"
-import Link from "next/link"
+import {Link} from "react-router-dom"
 
 // Mock order data
 const mockOrder = {
@@ -135,7 +135,7 @@ export default function OrderDetailsPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <Link href="/orders">
+              <Link to="/orders">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Orders
@@ -146,7 +146,7 @@ export default function OrderDetailsPage() {
                 <p className="text-muted-foreground">Order details and tracking information</p>
               </div>
             </div>
-            <Link href={`/orders/${orderId}/edit`}>
+            <Link to={`/orders/${orderId}/edit`}>
               <Button>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Order

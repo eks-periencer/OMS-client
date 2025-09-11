@@ -1,11 +1,11 @@
 "use client"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Badge } from "../../../../components/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/components/ui/table"
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, Package, Clock } from "lucide-react"
-import Link from "next/link"
+import {Link, useParams} from "react-router-dom"
 
 // Mock customer data
 const mockCustomer = {
@@ -47,7 +47,8 @@ const mockCustomer = {
   ],
 }
 
-export default function CustomerDetailsPage({ params }: { params: { id: string } }) {
+  export default function CustomerDetailsPage() {
+  const { id } = useParams()
   const customer = mockCustomer // In real app, fetch by params.id
 
   return (
@@ -59,7 +60,7 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Link href="/customers">
+              <Link to="/customers">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Customers
@@ -72,7 +73,7 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                 <p className="text-muted-foreground">{customer.customerNumber}</p>
               </div>
             </div>
-            <Link href={`/customers/${customer.id}/edit`}>
+            <Link to={`/customers/${id}/edit`}>
               <Button>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Customer
@@ -209,7 +210,7 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                             {order.completedAt ? new Date(order.completedAt).toLocaleDateString() : "-"}
                           </TableCell>
                           <TableCell>
-                            <Link href={`/orders/${order.id}`}>
+                            <Link to={`/orders/${order.id}`}>
                               <Button variant="ghost" size="sm">
                                 View Order
                               </Button>

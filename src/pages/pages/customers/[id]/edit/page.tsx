@@ -2,17 +2,17 @@
 import { useState } from "react"
 import type React from "react"
 
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Sidebar } from "../../../../../components/components/layout/sidebar"
+import { Button } from "../../../../../components/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../../../../../components/components/ui/card"
+import { Input } from "../../../../../components/components/ui/input"
+import { Label } from "../../../../../components/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/components/ui/select"
+import { Textarea } from "../../../../../components/components/ui/textarea"
+import { Checkbox } from "../../../../../components/components/ui/checkbox"
 import { ArrowLeft, Save } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import {Link} from "react-router-dom"
+import { useNavigate, useParams, type  NavigateFunction } from "react-router-dom"
 
 // Mock customer data - in real app, fetch by params.id
 const mockCustomer = {
@@ -33,8 +33,9 @@ const mockCustomer = {
   notes: "VIP customer, prefers morning installations",
 }
 
-export default function EditCustomerPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
+export default function EditCustomerPage() {
+const navigate = useNavigate()
+  const { id } = useParams()
   const [isLoading, setIsLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -62,7 +63,8 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
     setIsLoading(false)
 
     // Redirect back to customer details
-    router.push(`/customers/${params.id}`)
+    navigate(`/customers/${id}`)
+    navigate(`/customers/${id}`)
   }
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -78,7 +80,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Link href={`/customers/${params.id}`}>
+                <Link to={`/customers/${id}`}>
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Customer
@@ -241,7 +243,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
                     <Save className="mr-2 h-4 w-4" />
                     {isLoading ? "Saving..." : "Save Changes"}
                   </Button>
-                  <Link href={`/customers/${params.id}`}>
+                      <Link to={`/customers/${id}`}>
                     <Button type="button" variant="outline">
                       Cancel
                     </Button>

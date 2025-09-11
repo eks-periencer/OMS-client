@@ -1,16 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { useParams } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import { useParams } from "react-router-dom"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Badge } from "../../../../components/components/ui/badge"
+import { Progress } from "../../../../components/components/ui/progress"
+import { Textarea } from "../../../../components/components/ui/textarea"
+import { Label } from "../../../../components/components/ui/label"
 import { ArrowLeft, CheckCircle, Clock, User, MessageSquare, Play } from "lucide-react"
-import Link from "next/link"
+import {Link} from "react-router-dom"
 
 // Mock onboarding details
 const mockOnboardingDetails = {
@@ -154,7 +154,7 @@ export default function OnboardingDetailsPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <Link href="/onboarding">
+              <Link to="/onboarding">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Onboarding
@@ -310,7 +310,7 @@ export default function OnboardingDetailsPage() {
                     <p className="text-sm font-medium text-muted-foreground">Package</p>
                     <p className="text-sm">{mockOnboardingDetails.order.servicePackage}</p>
                   </div>
-                  <Link href={`/orders/${mockOnboardingDetails.order.id}`}>
+                    <Link to={`/orders/${mockOnboardingDetails.order.id}`}>
                     <Button variant="outline" size="sm" className="w-full bg-transparent">
                       View Order Details
                     </Button>

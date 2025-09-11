@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import { login } from "../../../toolkit/authSlice";
 import { auth, provider } from "../../../../lib/firebaseConfig.tsx";
@@ -26,13 +26,24 @@ export default function LoginPage() {
   
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const authState = useSelector((state: any) => state.authentication);
   const { loading, error, isAuthenticated } = authState;
 
+  // Get the intended destination from location state
+  const from = location.state?.from?.pathname || "/dashboard";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"email" | "google">("email");
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +51,7 @@ export default function LoginPage() {
     dispatch(login({ method: "email", email, password }))
       .unwrap()
       .then(() => {
-        navigate("/dashboard");
+        navigate(from, { replace: true });
       })
       .catch(() => {});
   };
@@ -67,7 +78,7 @@ export default function LoginPage() {
       )
         .unwrap()
         .then(() => {
-          navigate("/dashboard");
+          navigate(from, { replace: true });
         })
         .catch(() => {});
     } catch (err: any) {

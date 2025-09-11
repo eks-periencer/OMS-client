@@ -41,7 +41,7 @@ interface AuthState {
 const initialState: AuthState = {
   isAuthenticated: false,
   user: null,
-  loading: false,
+  loading: true, // Start with loading true to check for existing session
   error: null,
   userId: null,
   verificationToken: null,
@@ -53,6 +53,29 @@ const initialState: AuthState = {
 // ---------------------------
 // Async thunks
 // ---------------------------
+
+// Initialize auth state and check for existing session
+export const initializeAuth = createAsyncThunk(
+  'auth/initialize',
+  async (_, thunkAPI) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const userData = localStorage.getItem('user');
+      
+      if (token && userData) {
+        const user = JSON.parse(userData);
+        return { user, accessToken: token };
+      }
+      
+      return null;
+    } catch (error) {
+      // Clear invalid data
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      return null;
+    }
+  }
+);
 
 // Unified login (email or Google)
 export const login = createAsyncThunk(
@@ -130,6 +153,10 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.isEmailVerified = false;
       state.error = null;
+      
+      // Clear localStorage
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
     },
     clearError: (state) => {
       state.error = null;
@@ -139,6 +166,33 @@ const authSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
+    // Initialize auth
+    builder
+      .addCase(initializeAuth.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(initializeAuth.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload) {
+          state.isAuthenticated = true;
+          state.user = action.payload.user;
+          state.accessToken = action.payload.accessToken;
+        } else {
+          state.isAuthenticated = false;
+          state.user = null;
+          state.accessToken = null;
+        }
+        state.error = null;
+      })
+      .addCase(initializeAuth.rejected, (state, action) => {
+        state.loading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.accessToken = null;
+        state.error = action.payload as string;
+      });
+
     // Register
     builder
       .addCase(register.pending, (state) => {
@@ -169,6 +223,10 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.error = null;
+        
+        // Save to localStorage
+        localStorage.setItem('accessToken', action.payload.accessToken);
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;

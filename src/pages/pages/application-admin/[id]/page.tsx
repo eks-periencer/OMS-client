@@ -1,15 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useParams, useNavigate } from "react-router-dom"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Input } from "../../../../components/components/ui/input"
+import { Label } from "../../../../components/components/ui/label"
+import { Textarea } from "../../../../components/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Badge } from "../../../../components/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/components/ui/select"
 import {
   ArrowLeft,
   ExternalLink,
@@ -24,7 +24,7 @@ import {
   Play,
   Loader2,
 } from "lucide-react"
-import Link from "next/link"
+import {Link} from "react-router-dom"
 
 // Mock application details
 const mockApplicationDetails = {
@@ -132,9 +132,9 @@ function getStatusColor(status: string) {
 }
 
 export default function ProcessApplicationPage() {
-  const params = useParams()
-  const router = useRouter()
-  const applicationId = params.id as string
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const applicationId = id as string
 
   const [status, setStatus] = useState(mockApplicationDetails.status)
   const [fnoReference, setFnoReference] = useState("")
@@ -189,7 +189,7 @@ export default function ProcessApplicationPage() {
 
       setShowSuccessMessage(true)
       setTimeout(() => {
-        router.push("/application-admin")
+        navigate("/application-admin")
       }, 2000)
     } catch (error) {
       console.error("Failed to complete application:", error)
@@ -218,7 +218,7 @@ export default function ProcessApplicationPage() {
 
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <Link href="/application-admin">
+              <Link to="/application-admin">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Inbox
@@ -230,7 +230,7 @@ export default function ProcessApplicationPage() {
               </div>
             </div>
             <div className="flex space-x-2">
-              <Link href={mockApplicationDetails.fno.portalUrl} target="_blank">
+              <Link to={mockApplicationDetails.fno.portalUrl} target="_blank">
                 <Button variant="outline" className="bg-blue-50 hover:bg-blue-100 border-blue-200">
                   <ExternalLink className="mr-2 h-4 w-4" />
                   Open {mockApplicationDetails.fno.name} Portal
@@ -514,7 +514,7 @@ export default function ProcessApplicationPage() {
                     <p className="text-sm font-medium text-muted-foreground">Integration Type</p>
                     <p className="text-sm capitalize">{mockApplicationDetails.fno.integrationType}</p>
                   </div>
-                  <Link href={mockApplicationDetails.fno.portalUrl} target="_blank">
+                  <Link to={mockApplicationDetails.fno.portalUrl} target="_blank">
                     <Button variant="outline" size="sm" className="w-full bg-transparent">
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Open Portal
