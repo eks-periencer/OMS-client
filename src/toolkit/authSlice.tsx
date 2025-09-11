@@ -1,6 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
+// ---------------------------
+// API Base URL
+// ---------------------------
 const API_URL = 'http://localhost:3003';
 
 // ---------------------------
@@ -59,7 +62,7 @@ interface AuthState {
 }
 
 // ---------------------------
-// Initial state
+// Initial State
 // ---------------------------
 const initialState: AuthState = {
   isAuthenticated: false,
@@ -77,16 +80,15 @@ const initialState: AuthState = {
 };
 
 // ---------------------------
-// Async thunks
+// Async Thunks
 // ---------------------------
 
-// Unified login (email or Google)
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, thunkAPI) => {
     try {
       const response = await axios.post(`${API_URL}/auth/login`, credentials);
-      return response.data.data; // { user, accessToken, refreshToken, expiresIn }
+      return response.data.data; // Expected: { user, accessToken, refreshToken, expiresIn }
     } catch (error: any) {
       return thunkAPI.rejectWithValue(
         error.response?.data?.error?.message || 'Login failed'
@@ -95,7 +97,6 @@ export const login = createAsyncThunk(
   }
 );
 
-// Registration
 export const register = createAsyncThunk(
   'auth/register',
   async (credentials: RegisterCredentials, thunkAPI) => {
@@ -110,7 +111,6 @@ export const register = createAsyncThunk(
   }
 );
 
-// Email verification
 export const verifyEmail = createAsyncThunk(
   'auth/verify-email',
   async (token: string, thunkAPI) => {
@@ -125,7 +125,6 @@ export const verifyEmail = createAsyncThunk(
   }
 );
 
-// Resend verification
 export const resendVerification = createAsyncThunk(
   'auth/resend-verification',
   async (email: string, thunkAPI) => {
@@ -144,35 +143,22 @@ export const resendVerification = createAsyncThunk(
 // Slice
 // ---------------------------
 const authSlice = createSlice({
-  name: 'auth',
+  name: 'authentication',
   initialState,
   reducers: {
     logout: (state) => {
-      state.isAuthenticated = false;
-      state.user = null;
-      state.userId = null;
-      state.verificationToken = null;
-      state.accessToken = null;
-      state.refreshToken = null;
-      state.isEmailVerified = false;
-      state.expiresIn = null;
-      state.tokenIssuedAt = null;
-      state.tokenExpiresAt = null;
-      state.error = null;
+      Object.assign(state, initialState);
     },
     clearError: (state) => {
       state.error = null;
     },
     setAuthenticated: (state, action) => {
       state.isAuthenticated = action.payload;
-    },
-    loading: (state, action) =>{
-
     }
   },
   extraReducers: (builder) => {
-    // Register
     builder
+      // REGISTER
       .addCase(register.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -181,15 +167,13 @@ const authSlice = createSlice({
         state.loading = false;
         state.userId = action.payload.userId;
         state.verificationToken = action.payload.verificationToken;
-        state.error = null;
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      });
+      })
 
-    // Login (email or google)
-    builder
+      // LOGIN
       .addCase(login.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -197,31 +181,49 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.isAuthenticated = true;
-        
-        // Store all user data
-        state.user = action.payload.user;
-        state.userId = action.payload.user.id;
-        state.isEmailVerified = action.payload.user.email_verified;
-        
-        // Store token data
+
+        const user = action.payload.user;
+
+        // Debug log - remove in production
+        console.log("🔥 LOGIN PAYLOAD:", action.payload);
+
+        state.user = {
+          id: user.id,
+          email: user.email,
+          password_hash: user.password_hash,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone ?? null,
+          role_id: user.role_id,
+          reporting_manager_id: user.reporting_manager_id,
+          is_active: user.is_active,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          email_verified: user.email_verified,
+          login_method: user.login_method,
+          firebase_uid: user.firebase_uid,
+          profile_picture_url: user.profile_picture_url,
+          role_name: user.role_name ?? '', // Default to empty string
+          role_permissions: user.role_permissions ?? [], // Default to empty array
+        };
+
+        state.userId = user.id;
+        state.isEmailVerified = user.email_verified;
+
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.expiresIn = action.payload.expiresIn;
-        
-        // Calculate and store token timestamps
-        const now = Math.floor(Date.now() / 1000); // Current time in seconds
+
+        const now = Math.floor(Date.now() / 1000);
         state.tokenIssuedAt = now;
         state.tokenExpiresAt = now + action.payload.expiresIn;
-        
-        state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      });
+      })
 
-    // Email verification
-    builder
+      // VERIFY EMAIL
       .addCase(verifyEmail.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -229,19 +231,16 @@ const authSlice = createSlice({
       .addCase(verifyEmail.fulfilled, (state) => {
         state.loading = false;
         state.isEmailVerified = true;
-        // Update user object if it exists
         if (state.user) {
           state.user.email_verified = true;
         }
-        state.error = null;
       })
       .addCase(verifyEmail.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      });
+      })
 
-    // Resend verification
-    builder
+      // RESEND VERIFICATION
       .addCase(resendVerification.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -249,7 +248,6 @@ const authSlice = createSlice({
       .addCase(resendVerification.fulfilled, (state, action) => {
         state.loading = false;
         state.verificationToken = action.payload.verificationToken;
-        state.error = null;
       })
       .addCase(resendVerification.rejected, (state, action) => {
         state.loading = false;
@@ -261,28 +259,26 @@ const authSlice = createSlice({
 // ---------------------------
 // Selectors
 // ---------------------------
-export const selectIsTokenExpired = (state: { auth: AuthState }) => {
-  if (!state.auth.tokenExpiresAt) return true;
-  const now = Math.floor(Date.now() / 1000);
-  return now >= state.auth.tokenExpiresAt;
+export const selectIsTokenExpired = (state: { authentication: AuthState }) => {
+  const { tokenExpiresAt } = state.authentication;
+  if (!tokenExpiresAt) return true;
+  return Math.floor(Date.now() / 1000) >= tokenExpiresAt;
 };
 
-export const selectTimeUntilExpiry = (state: { auth: AuthState }) => {
-  if (!state.auth.tokenExpiresAt) return 0;
-  const now = Math.floor(Date.now() / 1000);
-  return Math.max(0, state.auth.tokenExpiresAt - now);
+export const selectTimeUntilExpiry = (state: { authentication: AuthState }) => {
+  const { tokenExpiresAt } = state.authentication;
+  if (!tokenExpiresAt) return 0;
+  return Math.max(0, tokenExpiresAt - Math.floor(Date.now() / 1000));
 };
 
-export const selectUserPermissions = (state: { auth: AuthState }) => {
-  return state.auth.user?.role_permissions || [];
-};
+export const selectUserPermissions = (state: { authentication: AuthState }) =>
+  state.authentication.user?.role_permissions || [];
 
-export const selectUserRole = (state: { auth: AuthState }) => {
-  return state.auth.user?.role_name;
-};
+export const selectUserRole = (state: { authentication: AuthState }) =>
+  state.authentication.user?.role_name || '';
 
 // ---------------------------
 // Exports
 // ---------------------------
-export const { logout, clearError, setAuthenticated, loading } = authSlice.actions;
+export const { logout, clearError, setAuthenticated } = authSlice.actions;
 export const authReducer = authSlice.reducer;
