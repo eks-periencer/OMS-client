@@ -1,9 +1,9 @@
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "../../../../lib/utils"
-import { useSelector, useDispatch } from "react-redux"
+import { useAuth, hasPermission } from "../../../../lib/auth"
 import { Button } from "../../../components/components/ui/button"
 import { ScrollArea } from "../../../components/components/ui/scroll-area"
 import { Separator } from "../../../components/components/ui/separator"
@@ -22,7 +22,6 @@ import {
   FileText,
   Network,
 } from "lucide-react"
-import { logout } from "../../../toolkit/authSlice"
 
 interface NavItem {
   title: string
@@ -101,21 +100,7 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const location = useLocation()
   const pathname = location.pathname
-  const [thisUser, setThisUser] = useState(null)
-
-  useEffect(()=>{
-    assignUser()
-  }, [])
-  
-  
-  const user = useSelector((state)=> state.authentication.user)
-  
-  console.log(`user: ${user}`)
-
-  const assignUser = () =>{
-      setThisUser(user)
-  }
-  const dispatch = useDispatch()
+  const { user, logout } = useAuth()
 
   // Show all navigation items regardless of permissions for now
   // You can re-enable permission filtering once your auth system is properly set up
@@ -132,7 +117,7 @@ export function Sidebar() {
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      dispatch(logout())
+      logout()
       // Use React Router navigation instead of window.location
       window.location.href = "/login"
     }
@@ -167,9 +152,9 @@ export function Sidebar() {
       {!isCollapsed && user && (
         <div className="p-4 border-b border-sidebar-border">
           <div className="text-sm font-medium text-sidebar-foreground">
-            {user.first_name} {user.last_name}
+            {user.firstName} {user.lastName}
           </div>
-          <div className="text-xs text-sidebar-foreground/70">{user.role_name || "Malicous Actor"}</div>
+          <div className="text-xs text-sidebar-foreground/70">{user.role?.name || 'User'}</div>
         </div>
       )}
 
@@ -206,43 +191,6 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/*
-        
-        {filteredAdminNavigation.length > 0 && user?.role_name === 'System Administrator' && (
-  <>
-    <Separator className="my-4" />
-    <div className="space-y-1">
-      {!isCollapsed && (
-        <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
-          Administration
-        </div>
-      )}
-      {filteredAdminNavigation.map((item) => {
-        const isActive = pathname === item.href
-        return (
-          <Link
-            key={item.href}
-            to={item.href}
-            className={cn(
-              "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-              isActive
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              isCollapsed && "justify-center",
-            )}
-          >
-            <item.icon className="h-4 w-4 flex-shrink-0" />
-            {!isCollapsed && <span>{item.title}</span>}
-          </Link>
-        )
-      })}
-    </div>
-  </>
-)}
-
-        
-        */}
-
         {filteredAdminNavigation.length > 0 && (
           <>
             <Separator className="my-4" />
@@ -275,8 +223,6 @@ export function Sidebar() {
           </>
         )}
       </ScrollArea>
-
-      
 
       {/* Logout */}
       <div className="p-2 border-t border-sidebar-border">
