@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import  Sidebar  from './pages/pages/admin/settings/page.tsx'
+ 
 import '../styles/globals.css'
 import DashboardPage from './pages/pages/dashboard/page.tsx'
 import { AuthProvider } from '../lib/auth'
@@ -19,6 +18,7 @@ import CustomerCreate from './pages/pages/customers/create/page.tsx'
 // import ForgotPasswordPage from './pages/pages/forgot-password/page.tsx'
 // import ResetPasswordPage from './pages/pages/reset-password/page.tsx'
 import { Routes, Route } from 'react-router-dom'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   // const [count, setCount] = useState(0)
@@ -28,20 +28,21 @@ function App() {
       {/* <Sidebar /> */}
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/application-admin" element={<ApplicationAdminPage />} />
-          <Route path="/fno" element={<FNOAdminPage />} />
-          <Route path="/escalations" element={<Escalations/>} />
-          <Route path="/customers" element={<Customers/>} />
-          <Route path="/orders" element={<Orders/>} />
-          <Route path="/reports" element={<ReportsPage />} /> 
-          <Route path="/users" element={<UsersPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path='/orders/create' element={<OrderCreate/>} />
-          <Route path='/customers/create' element={<CustomerCreate/>} />
+
+          <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+          <Route path="/application-admin" element={<ProtectedRoute><ApplicationAdminPage /></ProtectedRoute>} />
+          <Route path="/fno" element={<ProtectedRoute><FNOAdminPage /></ProtectedRoute>} />
+          <Route path="/escalations" element={<ProtectedRoute><Escalations/></ProtectedRoute>} />
+          <Route path="/customers" element={<ProtectedRoute><Customers/></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Orders/></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} /> 
+          <Route path="/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
+          <Route path='/orders/create' element={<ProtectedRoute><OrderCreate/></ProtectedRoute>} />
+          <Route path='/customers/create' element={<ProtectedRoute><CustomerCreate/></ProtectedRoute>} />
           {/* <Route path="/register" element={<RegisterPage />} /> */}
           {/* <Route path="/forgot-password" element={<ForgotPasswordPage />} /> */}
           {/* <Route path="/reset-password" element={<ResetPasswordPage />} /> */}
