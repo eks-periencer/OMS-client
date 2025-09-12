@@ -4,7 +4,9 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { Provider } from 'react-redux'
-import store from './toolkit/store.tsx' 
+import store from './toolkit/store.tsx'
+// Initialize Firebase early
+import './lib/firebase' 
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 import { login } from "../../../toolkit/authSlice";
-import { auth, provider } from "../../../../lib/firebaseConfig.tsx";
+import { auth, provider } from "../../../../lib/firebase";
 
 import { Button } from "../../../components/components/ui/button";
 import { Input } from "../../../components/components/ui/input";
