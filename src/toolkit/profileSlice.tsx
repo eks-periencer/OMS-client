@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const BASE_URL = 'http://localhost:3003';
+const BASE_URL = 'https://oms-server-ntlv.onrender.com';
 
 // Async thunk to fetch user profile
 export const fetchProfile = createAsyncThunk(

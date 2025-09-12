@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_URL = 'http://localhost:3003';
+const API_URL = 'https://oms-server-ntlv.onrender.com';
 
 // ---------------------------
 // Types
