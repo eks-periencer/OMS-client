@@ -1,12 +1,12 @@
 // toolkit/store.ts
 import { configureStore } from '@reduxjs/toolkit';
 import { authReducer } from './authSlice';
-import { profileReducer } from './profileSlice';
+import { userManagementReducer } from './userManagementSlice';
 
 export const store = configureStore({
   reducer: {
     authentication: authReducer,
-    profile: profileReducer
+    userManagement: userManagementReducer
   },
 });
 

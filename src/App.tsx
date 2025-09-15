@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect } from 'react'
 import  Sidebar  from './pages/pages/admin/settings/page.tsx'
 import '../styles/globals.css'
 import DashboardPage from './pages/pages/dashboard/page.tsx'
@@ -15,12 +15,17 @@ import LoginPage from './pages/pages/login/page.tsx'
 import Escalations from './pages/pages/escalations/page.tsx'
 import OrderCreate from './pages/pages/orders/create/page.tsx'
 import CustomerCreate from './pages/pages/customers/create/page.tsx'
+import { Toaster } from './components/components/ui/sonner'
+import { AuthGuard } from './components/AuthGuard'
 // import RegisterPage from './pages/pages/register/page.tsx'
 // import ForgotPasswordPage from './pages/pages/forgot-password/page.tsx'
 // import ResetPasswordPage from './pages/pages/reset-password/page.tsx'
 import { Routes, Route } from 'react-router-dom'
 
 function App() {
+
+  // Authentication is now handled by AuthGuard component and Redux state
+
   // const [count, setCount] = useState(0)
 
   return (
@@ -28,24 +33,80 @@ function App() {
       {/* <Sidebar /> */}
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/application-admin" element={<ApplicationAdminPage />} />
-          <Route path="/fno" element={<FNOAdminPage />} />
-          <Route path="/escalations" element={<Escalations/>} />
-          <Route path="/customers" element={<Customers/>} />
-          <Route path="/orders" element={<Orders/>} />
-          <Route path="/reports" element={<ReportsPage />} /> 
-          <Route path="/users" element={<UsersPage />} />
+          {/* Public routes - no authentication required */}
           <Route path="/login" element={<LoginPage />} />
-          <Route path='/orders/create' element={<OrderCreate/>} />
-          <Route path='/customers/create' element={<CustomerCreate/>} />
           {/* <Route path="/register" element={<RegisterPage />} /> */}
           {/* <Route path="/forgot-password" element={<ForgotPasswordPage />} /> */}
           {/* <Route path="/reset-password" element={<ResetPasswordPage />} /> */}
+          
+          {/* Protected routes - authentication required */}
+          <Route path="/" element={
+            <AuthGuard>
+              <DashboardPage />
+            </AuthGuard>
+          } />
+          <Route path="/dashboard" element={
+            <AuthGuard>
+              <DashboardPage />
+            </AuthGuard>
+          } />
+          <Route path="/onboarding" element={
+            <AuthGuard>
+              <OnboardingPage />
+            </AuthGuard>
+          } />
+          <Route path="/settings" element={
+            <AuthGuard>
+              <SettingsPage />
+            </AuthGuard>
+          } />
+          <Route path="/application-admin" element={
+            <AuthGuard>
+              <ApplicationAdminPage />
+            </AuthGuard>
+          } />
+          <Route path="/fno" element={
+            <AuthGuard>
+              <FNOAdminPage />
+            </AuthGuard>
+          } />
+          <Route path="/escalations" element={
+            <AuthGuard>
+              <Escalations/>
+            </AuthGuard>
+          } />
+          <Route path="/customers" element={
+            <AuthGuard>
+              <Customers/>
+            </AuthGuard>
+          } />
+          <Route path="/orders" element={
+            <AuthGuard>
+              <Orders/>
+            </AuthGuard>
+          } />
+          <Route path="/reports" element={
+            <AuthGuard>
+              <ReportsPage />
+            </AuthGuard>
+          } /> 
+          <Route path="/users" element={
+            <AuthGuard>
+              <UsersPage />
+            </AuthGuard>
+          } />
+          <Route path='/orders/create' element={
+            <AuthGuard>
+              <OrderCreate/>
+            </AuthGuard>
+          } />
+          <Route path='/customers/create' element={
+            <AuthGuard>
+              <CustomerCreate/>
+            </AuthGuard>
+          } />
         </Routes>
+        <Toaster />
       </AuthProvider>
     </>
   )

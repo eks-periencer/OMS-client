@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { WarningAlertModal } from "@/components/ui/alert-modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   ArrowLeft,
@@ -139,6 +140,8 @@ export default function ProcessApplicationPage() {
   const [status, setStatus] = useState(mockApplicationDetails.status)
   const [fnoReference, setFnoReference] = useState("")
   const [processingNotes, setProcessingNotes] = useState("")
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false)
+  const [alertMessage, setAlertMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [completedSteps, setCompletedSteps] = useState([0])
@@ -170,7 +173,8 @@ export default function ProcessApplicationPage() {
 
   const handleCompleteApplication = async () => {
     if (!fnoReference.trim()) {
-      alert("Please enter the FNO reference number")
+      setAlertMessage("Please enter the FNO reference number")
+      setIsAlertModalOpen(true)
       return
     }
 
@@ -193,7 +197,8 @@ export default function ProcessApplicationPage() {
       }, 2000)
     } catch (error) {
       console.error("Failed to complete application:", error)
-      alert("Failed to complete application. Please try again.")
+      setAlertMessage("Failed to complete application. Please try again.")
+      setIsAlertModalOpen(true)
     } finally {
       setIsLoading(false)
     }
@@ -537,6 +542,14 @@ export default function ProcessApplicationPage() {
           </div>
         </div>
       </main>
+
+      {/* Alert Modal */}
+      <WarningAlertModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
+        title="Warning"
+        description={alertMessage}
+      />
     </div>
   )
 }

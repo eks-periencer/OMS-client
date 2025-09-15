@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "../../../../lib/utils"
 import { useSelector, useDispatch } from "react-redux"
+import { LogoutConfirmationModal } from "../ui/confirmation-modal"
 import { Button } from "../../../components/components/ui/button"
 import { ScrollArea } from "../../../components/components/ui/scroll-area"
 import { Separator } from "../../../components/components/ui/separator"
@@ -102,6 +103,8 @@ export function Sidebar() {
   const location = useLocation()
   const pathname = location.pathname
   const [thisUser, setThisUser] = useState(null)
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
+  // const dispatch = useDispatch()
 
   useEffect(()=>{
     assignUser()
@@ -131,11 +134,12 @@ export function Sidebar() {
   // )
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      dispatch(logout())
-      // Use React Router navigation instead of window.location
-      window.location.href = "/login"
-    }
+    setIsLogoutModalOpen(true)
+  }
+
+  const confirmLogout = () => {
+    dispatch(logout())
+    window.location.href = "/login"
   }
 
   return (
@@ -205,8 +209,6 @@ export function Sidebar() {
             )
           })}
         </nav>
-
-        {/*
         
         {filteredAdminNavigation.length > 0 && user?.role_name === 'System Administrator' && (
   <>
@@ -241,9 +243,9 @@ export function Sidebar() {
 )}
 
         
-        */}
+        
 
-        {filteredAdminNavigation.length > 0 && (
+        {/* {filteredAdminNavigation.length > 0 && (
           <>
             <Separator className="my-4" />
             <div className="space-y-1">
@@ -273,7 +275,7 @@ export function Sidebar() {
               })}
             </div>
           </>
-        )}
+        )} */}
       </ScrollArea>
 
       
@@ -292,6 +294,13 @@ export function Sidebar() {
           {!isCollapsed && <span className="ml-3">Logout</span>}
         </Button>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmationModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={confirmLogout}
+      />
     </div>
   )
 }
