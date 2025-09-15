@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import { login, clearError } from "../../../toolkit/authSlice";
 import { auth, provider } from "../../../../lib/firebaseConfig.tsx";
@@ -25,6 +25,7 @@ export default function LoginPage() {
   
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Get auth state - using 'authentication' to match your store
   const authState = useSelector((state: any) => state.authentication);
@@ -38,6 +39,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"email" | "google">("email");
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && accessToken) {
+      const from = location.state?.from || "/dashboard";
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, accessToken, navigate, location]);
 
   // Clear error when component unmounts or mode changes
   useEffect(() => {
@@ -84,7 +93,9 @@ export default function LoginPage() {
       console.log("📊 Complete Auth State:", authState);
       console.log("=====================================");
       
-      navigate("/dashboard");
+      // Redirect to the originally requested page or dashboard
+      const from = location.state?.from || "/dashboard";
+      navigate(from, { replace: true });
     }
   }, [isAuthenticated, user, navigate, authState, accessToken, refreshToken, expiresIn]);
 
