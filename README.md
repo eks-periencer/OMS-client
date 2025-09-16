@@ -1,69 +1,69 @@
-# React + TypeScript + Vite
+# OMS Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This client consumes the OMS main server APIs (and indirectly the onboarding service through the main server).
 
-Currently, two official plugins are available:
+## Configure API base URL
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Create a `.env` file at the project root (alongside `package.json`):
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+VITE_API_BASE_URL=https://oms-server-ntlv.onrender.com
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+If omitted, it defaults to `http://localhost:3003`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Quick start
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+npm i
+npm run dev
+```
+
+## Client SDK
+
+- `lib/api/client.ts`: axios instance and helpers
+- `lib/api/customers.ts`: typed functions for customer endpoints
+- `hooks/useCustomers.ts`: React hook with load/create/convert helpers
+
+### Example: list and create customers
+
+```tsx
+import { useCustomers } from '@/hooks/useCustomers';
+
+export default function CustomersPage() {
+  const { customers, loading, error, create } = useCustomers();
+
+  const handleCreate = async () => {
+    await create({
+      firstName: 'Thandi',
+      lastName: 'Nkosi',
+      email: 'thandi.nkosi@company.co.za',
+      customerType: 'business',
+      isTrial: true,
+      address: { street: '123 Rivonia Road', city: 'Johannesburg', state: 'Gauteng', postal_code: '2196', country: 'South Africa' }
+    });
+  };
+
+  if (loading) return <div>Loading…</div>;
+  if (error) return <div>Error: {error}</div>;
+  return (
+    <div>
+      <button onClick={handleCreate}>Create trial customer</button>
+      <ul>
+        {customers.map(c => (
+          <li key={c.id}>{c.first_name} {c.last_name} — {c.email}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## Auth
+
+If your OMS server requires a bearer token, set it after login:
+
+```ts
+import { setAuthToken } from '@/lib/api/client';
+setAuthToken('<JWT_TOKEN>');
 ```

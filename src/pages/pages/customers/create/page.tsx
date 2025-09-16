@@ -13,10 +13,12 @@ import { Textarea } from "../../../../components/components/ui/textarea"
 import { Checkbox } from "../../../../components/components/ui/checkbox"
 import { ArrowLeft, Save, User } from "lucide-react"
 import {Link} from "react-router-dom"
+import { useCustomers } from "../../../../../hooks/useCustomers"
 
 export default function CreateCustomerPage() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const { create } = useCustomers()
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -37,13 +39,27 @@ export default function CreateCustomerPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    console.log("Creating customer:", formData)
-    setIsLoading(false)
-    router.push("/customers")
+    try {
+      // Map form to API input; backend accepts camelCase and snake_case
+      await create({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        customerType: formData.customerType as any,
+        isTrial: formData.isTrial,
+        address: {
+          street: formData.address.street,
+          city: formData.address.city,
+          state: formData.address.province,
+          postal_code: formData.address.postalCode,
+          country: "South Africa"
+        }
+      })
+      navigate("/customers")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleInputChange = (field: string, value: string | boolean) => {
