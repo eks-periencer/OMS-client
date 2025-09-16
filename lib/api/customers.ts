@@ -74,6 +74,11 @@ export async function createCustomer(input: CreateCustomerInput): Promise<Custom
   return unwrap<Customer>(resp);
 }
 
+export async function updateCustomer(id: string, input: Partial<CreateCustomerInput>): Promise<Customer> {
+  const resp = await apiClient.put(`/customers/${id}`, input);
+  return unwrap<Customer>(resp);
+}
+
 export async function convertTrialToCustomer(id: string): Promise<Customer> {
   const resp = await apiClient.post(`/customers/${id}/convert-trial`);
   return unwrap<Customer>(resp);

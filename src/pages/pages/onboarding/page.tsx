@@ -174,7 +174,7 @@ export default function OnboardingPage() {
               <h1 className="text-3xl font-bold text-foreground">Customer Onboarding</h1>
               <p className="text-muted-foreground">Manage customer onboarding workflows and trial conversions</p>
             </div>
-            <Link href="/onboarding/create">
+            <Link to="/customers/create">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Start Onboarding
@@ -330,7 +330,7 @@ export default function OnboardingPage() {
                           </TableCell>
                           <TableCell>{new Date(item.estimatedCompletion).toLocaleDateString()}</TableCell>
                           <TableCell>
-                            <Link href={`/onboarding/${item.id}`}>
+                            <Link to={`/onboarding/${item.id}`}>
                               <Button variant="ghost" size="sm">
                                 <Eye className="mr-2 h-4 w-4" />
                                 View
@@ -436,7 +436,7 @@ export default function OnboardingPage() {
                             <div className="text-sm">{new Date(customer.lastActivity).toLocaleDateString()}</div>
                           </TableCell>
                           <TableCell>
-                            <Link href={`/onboarding/trials/${customer.id}`}>
+                            <Link to={`/onboarding/trials/${customer.id}`}>
                               <Button variant="ghost" size="sm">
                                 <Eye className="mr-2 h-4 w-4" />
                                 Manage

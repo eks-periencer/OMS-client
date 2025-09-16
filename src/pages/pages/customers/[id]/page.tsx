@@ -1,11 +1,13 @@
 "use client"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Badge } from "../../../../components/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/components/ui/table"
 import { ArrowLeft, Edit, Mail, Phone, MapPin, Calendar, Package, Clock } from "lucide-react"
-import Link from "next/link"
+import { Link, useParams } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { getCustomer, type Customer } from "../../../../../lib/api/customers"
 
 // Mock customer data
 const mockCustomer = {
@@ -47,8 +49,31 @@ const mockCustomer = {
   ],
 }
 
-export default function CustomerDetailsPage({ params }: { params: { id: string } }) {
-  const customer = mockCustomer // In real app, fetch by params.id
+export default function CustomerDetailsPage() {
+  const { id } = useParams()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [customer, setCustomer] = useState<Customer | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    const run = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        if (id) {
+          const data = await getCustomer(id)
+          if (mounted) setCustomer(data)
+        }
+      } catch (e: any) {
+        if (mounted) setError(e?.message || 'Failed to load customer')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    void run()
+    return () => { mounted = false }
+  }, [id])
 
   return (
     <div className="flex h-screen bg-background">
@@ -56,10 +81,36 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
 
       <main className="flex-1 overflow-auto">
         <div className="p-6">
+          {loading && (
+            <div className="space-y-4">
+              <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <div className="h-40 bg-muted rounded animate-pulse" />
+                  <div className="h-40 bg-muted rounded animate-pulse" />
+                </div>
+                <div className="lg:col-span-2 h-72 bg-muted rounded animate-pulse" />
+              </div>
+            </div>
+          )}
+          {!loading && error && (
+            <div className="text-sm text-red-600 mb-4">{error}</div>
+          )}
+          {!loading && !customer && (
+            <div className="space-y-4">
+              <div className="text-xl font-semibold">Customer not found</div>
+              <Link to="/customers">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Customers
+                </Button>
+              </Link>
+            </div>
+          )}
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Link href="/customers">
+              <Link to="/customers">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Customers
@@ -67,12 +118,24 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
               </Link>
               <div>
                 <h1 className="text-3xl font-bold text-foreground">
-                  {customer.firstName} {customer.lastName}
+                  {loading ? (
+                    <span className="inline-block h-7 w-48 bg-muted rounded animate-pulse" />
+                  ) : (
+                    <>
+                      {customer?.first_name} {customer?.last_name}
+                    </>
+                  )}
                 </h1>
-                <p className="text-muted-foreground">{customer.customerNumber}</p>
+                <p className="text-muted-foreground">
+                  {loading ? (
+                    <span className="inline-block h-4 w-32 bg-muted rounded animate-pulse" />
+                  ) : (
+                    customer?.customer_number
+                  )}
+                </p>
               </div>
             </div>
-            <Link href={`/customers/${customer.id}/edit`}>
+            <Link to={`/customers/${id}/edit`}>
               <Button>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Customer
@@ -92,7 +155,7 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium">{customer.email}</p>
+                      <p className="font-medium">{customer?.email}</p>
                     </div>
                   </div>
 
@@ -100,7 +163,7 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                     <Phone className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="font-medium">{customer.phone}</p>
+                      <p className="font-medium">{customer?.phone}</p>
                     </div>
                   </div>
 
@@ -108,7 +171,7 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Type</p>
-                      <Badge variant="outline">{customer.customerType}</Badge>
+                      <Badge variant="outline">{customer?.customer_type}</Badge>
                     </div>
                   </div>
 
@@ -116,11 +179,11 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Created</p>
-                      <p className="font-medium">{new Date(customer.createdAt).toLocaleDateString()}</p>
+                      <p className="font-medium">{customer ? new Date(customer.created_at).toLocaleDateString() : ''}</p>
                     </div>
                   </div>
 
-                  {customer.isTrial && (
+                  {customer?.is_trial && (
                     <div className="flex items-center gap-3">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <div>
@@ -140,23 +203,23 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                   <div className="flex items-start gap-3">
                     <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
                     <div>
-                      <p className="font-medium">{customer.address.street}</p>
+                      <p className="font-medium">{customer?.address?.street}</p>
                       <p className="text-sm text-muted-foreground">
-                        {customer.address.city}, {customer.address.province}
+                        {customer?.address?.city}, {customer?.address?.state}
                       </p>
-                      <p className="text-sm text-muted-foreground">{customer.address.postalCode}</p>
+                      <p className="text-sm text-muted-foreground">{customer?.address?.postal_code}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {customer.notes && (
+              {customer?.notes && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Notes</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm">{customer.notes}</p>
+                    <p className="text-sm">{(customer as any).notes}</p>
                   </CardContent>
                 </Card>
               )}
@@ -170,55 +233,59 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                   <CardDescription>All orders for this customer</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order Number</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Completed</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {customer.orders.map((order) => (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{order.serviceType}</p>
-                              <p className="text-sm text-muted-foreground">{order.servicePackage}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              className={
-                                order.currentState === "active"
-                                  ? "bg-green-100 text-green-800"
-                                  : order.currentState === "in_progress"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-gray-100 text-gray-800"
-                              }
-                            >
-                              {order.currentState.replace("_", " ")}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            {order.completedAt ? new Date(order.completedAt).toLocaleDateString() : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Link href={`/orders/${order.id}`}>
-                              <Button variant="ghost" size="sm">
-                                View Order
-                              </Button>
-                            </Link>
-                          </TableCell>
+                  {Array.isArray((customer as any)?.orders) && (customer as any).orders.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Order Number</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead>Completed</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {(customer as any).orders.map((order: any) => (
+                          <TableRow key={order.id}>
+                            <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{order.serviceType}</p>
+                                <p className="text-sm text-muted-foreground">{order.servicePackage}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                className={
+                                  order.currentState === "active"
+                                    ? "bg-green-100 text-green-800"
+                                    : order.currentState === "in_progress"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-gray-100 text-gray-800"
+                                }
+                              >
+                                {order.currentState?.replace("_", " ")}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}</TableCell>
+                            <TableCell>
+                              {order.completedAt ? new Date(order.completedAt).toLocaleDateString() : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <Link to={`/orders/${order.id}`}>
+                                <Button variant="ghost" size="sm">
+                                  View Order
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">No orders found for this customer.</div>
+                  )}
                 </CardContent>
               </Card>
             </div>

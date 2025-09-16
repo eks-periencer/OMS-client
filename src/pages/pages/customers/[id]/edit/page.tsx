@@ -2,17 +2,18 @@
 import { useState } from "react"
 import type React from "react"
 
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Sidebar } from "../../../../../components/components/layout/sidebar"
+import { Button } from "../../../../../components/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../../../../../components/components/ui/card"
+import { Input } from "../../../../../components/components/ui/input"
+import { Label } from "../../../../../components/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../components/components/ui/select"
+import { Textarea } from "../../../../../components/components/ui/textarea"
+import { Checkbox } from "../../../../../components/components/ui/checkbox"
 import { ArrowLeft, Save } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { Link, useNavigate, useParams } from "react-router-dom"
+import { useEffect } from "react"
+import { getCustomer, updateCustomer } from "../../../../../../lib/api/customers"
 
 // Mock customer data - in real app, fetch by params.id
 const mockCustomer = {
@@ -33,36 +34,78 @@ const mockCustomer = {
   notes: "VIP customer, prefers morning installations",
 }
 
-export default function EditCustomerPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
+export default function EditCustomerPage() {
+  const navigate = useNavigate()
+  const { id } = useParams()
   const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const [formData, setFormData] = useState({
-    firstName: mockCustomer.firstName,
-    lastName: mockCustomer.lastName,
-    email: mockCustomer.email,
-    phone: mockCustomer.phone,
-    customerType: mockCustomer.customerType,
-    isTrial: mockCustomer.isTrial,
-    street: mockCustomer.address.street,
-    city: mockCustomer.address.city,
-    province: mockCustomer.address.province,
-    postalCode: mockCustomer.address.postalCode,
-    notes: mockCustomer.notes,
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    customerType: "individual",
+    isTrial: false,
+    street: "",
+    city: "",
+    province: "",
+    postalCode: "",
+    notes: "",
   })
+
+  useEffect(() => {
+    let mounted = true
+    const run = async () => {
+      if (!id) return
+      setLoading(true)
+      try {
+        const c = await getCustomer(id)
+        if (!mounted) return
+        setFormData({
+          firstName: c.first_name,
+          lastName: c.last_name,
+          email: c.email,
+          phone: c.phone || "",
+          customerType: c.customer_type,
+          isTrial: c.is_trial,
+          street: c.address?.street || "",
+          city: c.address?.city || "",
+          province: c.address?.state || "",
+          postalCode: c.address?.postal_code || "",
+          notes: (c as any).notes || "",
+        })
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    void run()
+    return () => { mounted = false }
+  }, [id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    console.log("[v0] Updating customer:", formData)
+    await updateCustomer(id!, {
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      customer_type: formData.customerType as any,
+      is_trial: formData.isTrial,
+      address: {
+        street: formData.street,
+        city: formData.city,
+        state: formData.province,
+        postal_code: formData.postalCode,
+        country: "South Africa"
+      }
+    } as any)
     setIsLoading(false)
 
     // Redirect back to customer details
-    router.push(`/customers/${params.id}`)
+    navigate(`/customers/${id}`)
   }
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -78,7 +121,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <Link href={`/customers/${params.id}`}>
+              <Link to={`/customers/${id}`}>
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Customer
@@ -86,7 +129,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
               </Link>
               <div>
                 <h1 className="text-3xl font-bold text-foreground">Edit Customer</h1>
-                <p className="text-muted-foreground">{mockCustomer.customerNumber}</p>
+                {/* Optionally show customer number if available */}
               </div>
             </div>
           </div>
@@ -241,7 +284,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
                     <Save className="mr-2 h-4 w-4" />
                     {isLoading ? "Saving..." : "Save Changes"}
                   </Button>
-                  <Link href={`/customers/${params.id}`}>
+                  <Link to={`/customers/${id}`}>
                     <Button type="button" variant="outline">
                       Cancel
                     </Button>
