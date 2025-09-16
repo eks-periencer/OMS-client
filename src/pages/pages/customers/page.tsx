@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Button } from "../../../components/components/ui/button"
 import { Input } from "../../../components/components/ui/input"
@@ -11,75 +11,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Plus, Search, Eye, Edit, MoreHorizontal, Users, UserCheck, Clock } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/components/ui/dropdown-menu"
 import {Link} from "react-router-dom"
+import { useCustomers } from "../../../../hooks/useCustomers"
 
-// Mock customers data
-const mockCustomers = [
-  {
-    id: "1",
-    customerNumber: "CUST-001",
-    firstName: "John",
-    lastName: "Smith",
-    email: "john@example.com",
-    phone: "+27123456789",
-    customerType: "individual",
-    isTrial: false,
-    address: {
-      street: "123 Main Street",
-      city: "Cape Town",
-      province: "Western Cape",
-      postalCode: "8001",
-    },
-    createdAt: "2025-01-08T10:30:00Z",
-    activeOrders: 2,
-    totalOrders: 5,
-  },
-  {
-    id: "2",
-    customerNumber: "CUST-002",
-    firstName: "Sarah",
-    lastName: "Johnson",
-    email: "sarah@example.com",
-    phone: "+27987654321",
-    customerType: "business",
-    isTrial: true,
-    trialStartDate: "2025-01-05T00:00:00Z",
-    trialEndDate: "2025-02-04T00:00:00Z",
-    address: {
-      street: "456 Business Ave",
-      city: "Johannesburg",
-      province: "Gauteng",
-      postalCode: "2000",
-    },
-    createdAt: "2025-01-05T14:20:00Z",
-    activeOrders: 1,
-    totalOrders: 1,
-  },
-  {
-    id: "3",
-    customerNumber: "CUST-003",
-    firstName: "Mike",
-    lastName: "Davis",
-    email: "mike@example.com",
-    phone: "+27555666777",
-    customerType: "individual",
-    isTrial: false,
-    address: {
-      street: "789 Oak Road",
-      city: "Durban",
-      province: "KwaZulu-Natal",
-      postalCode: "4000",
-    },
-    createdAt: "2025-01-07T09:15:00Z",
-    activeOrders: 0,
-    totalOrders: 3,
-  },
-]
+// Utilities to work with trial in API shape
 
 function getTrialStatus(customer: any) {
-  if (!customer.isTrial) return null
+  if (!customer.is_trial) return null
 
   const now = new Date()
-  const endDate = new Date(customer.trialEndDate)
+  const endDate = new Date(customer.trial_end_date || Date.now())
   const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
   if (daysRemaining <= 0) return { status: "expired", daysRemaining: 0 }
@@ -91,21 +31,22 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [trialFilter, setTrialFilter] = useState("all")
+  const { customers, stats, loading, error } = useCustomers()
 
-  const filteredCustomers = mockCustomers.filter((customer) => {
+  const filteredCustomers = useMemo(() => (customers || []).filter((customer) => {
     const matchesSearch =
-      customer.customerNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${customer.firstName} ${customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.customer_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${customer.first_name} ${customer.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesType = typeFilter === "all" || customer.customerType === typeFilter
+    const matchesType = typeFilter === "all" || customer.customer_type === typeFilter
     const matchesTrial =
       trialFilter === "all" ||
-      (trialFilter === "trial" && customer.isTrial) ||
-      (trialFilter === "regular" && !customer.isTrial)
+      (trialFilter === "trial" && customer.is_trial) ||
+      (trialFilter === "regular" && !customer.is_trial)
 
     return matchesSearch && matchesType && matchesTrial
-  })
+  }), [customers, searchTerm, typeFilter, trialFilter])
 
   return (
     <div className="flex h-screen bg-background">
@@ -113,6 +54,10 @@ export default function CustomersPage() {
 
       <main className="flex-1 overflow-auto">
         <div className="p-6">
+          {/* Top loading indicator removed per request */}
+          {error && (
+            <div className="mb-4 text-sm text-red-600">{error}</div>
+          )}
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -135,7 +80,13 @@ export default function CustomersPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockCustomers.length}</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <span className="inline-block h-5 w-16 bg-muted rounded animate-pulse" />
+                  ) : (
+                    stats?.total ?? 0
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -145,7 +96,13 @@ export default function CustomersPage() {
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockCustomers.filter((c) => c.isTrial).length}</div>
+                <div className="text-2xl font-bold">
+                  {loading ? (
+                    <span className="inline-block h-5 w-16 bg-muted rounded animate-pulse" />
+                  ) : (
+                    stats?.trial ?? 0
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -155,7 +112,7 @@ export default function CustomersPage() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{mockCustomers.reduce((sum, c) => sum + c.activeOrders, 0)}</div>
+                <div className="text-2xl font-bold">—</div>
               </CardContent>
             </Card>
           </div>
@@ -222,16 +179,41 @@ export default function CustomersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustomers.map((customer) => {
+                  {loading && (
+                    Array.from({ length: 5 }).map((_, idx) => (
+                      <TableRow key={`skeleton-${idx}`} className="animate-pulse">
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="h-4 w-40 bg-muted rounded" />
+                            <div className="h-3 w-24 bg-muted rounded" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <div className="h-3 w-40 bg-muted rounded" />
+                            <div className="h-3 w-28 bg-muted rounded" />
+                          </div>
+                        </TableCell>
+                        <TableCell><div className="h-5 w-20 bg-muted rounded-full" /></TableCell>
+                        <TableCell><div className="h-5 w-24 bg-muted rounded" /></TableCell>
+                        <TableCell><div className="h-3 w-16 bg-muted rounded" /></TableCell>
+                        <TableCell><div className="h-3 w-20 bg-muted rounded" /></TableCell>
+                        <TableCell>
+                          <div className="h-8 w-8 bg-muted rounded" />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                  {!loading && filteredCustomers.map((customer: any) => {
                     const trialStatus = getTrialStatus(customer)
                     return (
                       <TableRow key={customer.id}>
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {customer.firstName} {customer.lastName}
+                              {customer.first_name} {customer.last_name}
                             </div>
-                            <div className="text-sm text-muted-foreground">{customer.customerNumber}</div>
+                            <div className="text-sm text-muted-foreground">{customer.customer_number}</div>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -241,10 +223,10 @@ export default function CustomersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{customer.customerType}</Badge>
+                          <Badge variant="outline">{customer.customer_type}</Badge>
                         </TableCell>
                         <TableCell>
-                          {customer.isTrial ? (
+                          {customer.is_trial ? (
                             <div>
                               <Badge
                                 className={
@@ -270,12 +252,9 @@ export default function CustomersPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="text-sm font-medium">{customer.activeOrders} active</div>
-                            <div className="text-xs text-muted-foreground">{customer.totalOrders} total</div>
-                          </div>
+                          <div className="text-sm text-muted-foreground">—</div>
                         </TableCell>
-                        <TableCell>{new Date(customer.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(customer.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
