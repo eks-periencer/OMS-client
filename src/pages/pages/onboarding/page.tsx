@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Button } from "../../../components/components/ui/button"
 import { Input } from "../../../components/components/ui/input"
@@ -11,45 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/components/ui/tabs"
 import { Progress } from "../../../components/components/ui/progress"
 import { Plus, Search, Eye, UserCheck, TrendingUp, Users, Calendar } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
-// Mock onboarding data
-const mockOnboardingCustomers = [
-  {
-    id: "1",
-    customer: {
-      id: "1",
-      firstName: "Alice",
-      lastName: "Cooper",
-      email: "alice@example.com",
-      customerNumber: "CUST-004",
-    },
-    onboardingType: "new_customer",
-    currentStep: "equipment_delivery",
-    completionPercentage: 60,
-    assignedTo: { firstName: "Sarah", lastName: "Manager" },
-    startedAt: "2025-01-08T10:00:00Z",
-    estimatedCompletion: "2025-01-15T00:00:00Z",
-    status: "in_progress",
-  },
-  {
-    id: "2",
-    customer: {
-      id: "2",
-      firstName: "Bob",
-      lastName: "Wilson",
-      email: "bob@example.com",
-      customerNumber: "CUST-005",
-    },
-    onboardingType: "trial",
-    currentStep: "activation",
-    completionPercentage: 80,
-    assignedTo: { firstName: "Mike", lastName: "Success" },
-    startedAt: "2025-01-06T14:30:00Z",
-    estimatedCompletion: "2025-01-12T00:00:00Z",
-    status: "in_progress",
-  },
-]
+import { useOnboarding } from "../../../../hooks/useOnboarding"
+import { initiateOnboarding } from "../../../../lib/api/onboarding"
+import { useCustomers } from "../../../../hooks/useCustomers"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/components/ui/dialog"
 
 const mockTrialCustomers = [
   {
@@ -96,15 +63,7 @@ const mockTrialCustomers = [
   },
 ]
 
-const onboardingStats = {
-  activeOnboarding: 15,
-  completedThisMonth: 42,
-  averageCompletionTime: 8.5,
-  completionRate: 94.2,
-  trialCustomers: 34,
-  trialConversions: 23,
-  conversionRate: 67.6,
-}
+// Stats are derived from live onboarding items
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -140,18 +99,123 @@ export default function OnboardingPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
+  const { items, loading, error } = useOnboarding()
+  const navigate = useNavigate()
+  const [initiating, setInitiating] = useState(false)
+  const { customers, loading: loadingCustomers, error: customersError } = useCustomers()
+  const [isInitiateDialogOpen, setIsInitiateDialogOpen] = useState(false)
+  const [customerSearch, setCustomerSearch] = useState("")
 
-  const filteredOnboarding = mockOnboardingCustomers.filter((item) => {
-    const matchesSearch =
-      `${item.customer.firstName} ${item.customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.customer.customerNumber.toLowerCase().includes(searchTerm.toLowerCase())
+  const sortedFilteredCustomers = useMemo(() => {
+    const list = Array.isArray(customers) ? customers : []
+    const filtered = list.filter((c: any) => {
+      const q = customerSearch.toLowerCase()
+      return (
+        `${c.first_name ?? ''} ${c.last_name ?? ''}`.toLowerCase().includes(q) ||
+        (c.email ?? '').toLowerCase().includes(q) ||
+        (c.customer_number ?? '').toLowerCase().includes(q)
+      )
+    })
+    return filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }, [customers, customerSearch])
 
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter
-    const matchesType = typeFilter === "all" || item.onboardingType === typeFilter
+  async function initiateForCustomer(customerId: string) {
+    try {
+      setInitiating(true)
+      const res = await initiateOnboarding(customerId, 'standard')
+      const onboardingId = (res as any)?.onboardingId || (res as any)?.id
+      if (onboardingId) {
+        setIsInitiateDialogOpen(false)
+        navigate(`/onboarding/${onboardingId}`)
+      } else {
+        alert('Onboarding initiated, but no onboardingId was returned.')
+      }
+    } catch (e: any) {
+      alert(e?.response?.data?.error?.message || e?.message || 'Failed to initiate onboarding')
+    } finally {
+      setInitiating(false)
+    }
+  }
 
-    return matchesSearch && matchesStatus && matchesType
-  })
+  const filteredOnboarding = useMemo(() => {
+    // Build quick lookup for customer details by id
+    const customerById: Record<string, any> = {}
+    if (Array.isArray(customers)) {
+      for (const c of customers as any[]) {
+        if (c?.id) customerById[c.id] = c
+      }
+    }
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.log('[OnboardingPage] raw items:', items)
+    }
+    const list = items.map((o) => {
+      const c = o.customer_id ? customerById[o.customer_id] : undefined
+      const firstName = c?.first_name || c?.firstName || ''
+      const lastName = c?.last_name || c?.lastName || ''
+      const email = c?.email || ''
+      const customerNumber = c?.customer_number || c?.customerNumber || (o.customer_id || '').slice(0, 8)
+      return {
+      id: o.id,
+      customer: {
+        id: o.customer_id || "",
+        firstName,
+        lastName,
+        email,
+        customerNumber,
+      },
+      onboardingType: o.onboarding_type || "standard",
+      currentStep: o.current_step || "initiated",
+      completionPercentage: o.completion_percentage || 0,
+      assignedTo: { firstName: "", lastName: "" },
+      startedAt: o.started_at || "",
+      estimatedCompletion: "",
+      status: (o.current_step && o.current_step !== 'completed') ? 'in_progress' : 'completed',
+    }});
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.log('[OnboardingPage] mapped items:', list)
+    }
+
+    return list.filter((item) => {
+      const matchesSearch =
+        `${item.customer.firstName} ${item.customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.customer.customerNumber.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesStatus = statusFilter === "all" || item.status === statusFilter
+      const matchesType = typeFilter === "all" || item.onboardingType === typeFilter
+
+      return matchesSearch && matchesStatus && matchesType
+    })
+  }, [items, customers, searchTerm, statusFilter, typeFilter])
+
+  const liveStats = useMemo(() => {
+    const total = items.length
+    const active = items.filter(o => (o.current_step && o.current_step !== 'completed')).length
+    const completed = items.filter(o => o.current_step === 'completed').length
+
+    // Approximate monthly completed based on started_at within current month and completed
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const completedThisMonth = items.filter(o => {
+      const started = o.started_at ? new Date(o.started_at) : null
+      return o.current_step === 'completed' && started && started >= startOfMonth
+    }).length
+
+    // No precise duration data; leave averageCompletionTime as 0 for now
+    const averageCompletionTime = 0
+    const completionRate = total === 0 ? 0 : Math.round((completed / total) * 100)
+
+    return {
+      activeOnboarding: active,
+      completedThisMonth,
+      averageCompletionTime,
+      completionRate,
+      trialCustomers: 0,
+      trialConversions: 0,
+      conversionRate: 0,
+    }
+  }, [items])
 
   const filteredTrials = mockTrialCustomers.filter((customer) => {
     const matchesSearch =
@@ -174,12 +238,17 @@ export default function OnboardingPage() {
               <h1 className="text-3xl font-bold text-foreground">Customer Onboarding</h1>
               <p className="text-muted-foreground">Manage customer onboarding workflows and trial conversions</p>
             </div>
-            <Link to="/customers/create">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Start Onboarding
+            <div className="flex gap-2">
+              <Link to="/customers/create">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Customer
+                </Button>
+              </Link>
+              <Button variant="outline" onClick={() => setIsInitiateDialogOpen(true)} disabled={initiating}>
+                {initiating ? 'Initiating...' : 'Initiate for Existing'}
               </Button>
-            </Link>
+            </div>
           </div>
 
           {/* Stats Grid */}
@@ -190,7 +259,7 @@ export default function OnboardingPage() {
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{onboardingStats.activeOnboarding}</div>
+                <div className="text-2xl font-bold">{liveStats.activeOnboarding}</div>
                 <p className="text-xs text-muted-foreground">In progress</p>
               </CardContent>
             </Card>
@@ -201,7 +270,7 @@ export default function OnboardingPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{onboardingStats.completionRate}%</div>
+                <div className="text-2xl font-bold">{liveStats.completionRate}%</div>
                 <p className="text-xs text-muted-foreground">This month</p>
               </CardContent>
             </Card>
@@ -212,7 +281,7 @@ export default function OnboardingPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{onboardingStats.trialCustomers}</div>
+                <div className="text-2xl font-bold">{liveStats.trialCustomers}</div>
                 <p className="text-xs text-muted-foreground">Active trials</p>
               </CardContent>
             </Card>
@@ -223,7 +292,7 @@ export default function OnboardingPage() {
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{onboardingStats.conversionRate}%</div>
+                <div className="text-2xl font-bold">{liveStats.conversionRate}%</div>
                 <p className="text-xs text-muted-foreground">Trial to paid</p>
               </CardContent>
             </Card>
@@ -285,9 +354,10 @@ export default function OnboardingPage() {
               {/* Onboarding Table */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Active Onboarding ({filteredOnboarding.length})</CardTitle>
+                  <CardTitle>Active Onboarding {loading ? '(loading...)' : `(${filteredOnboarding.length})`}</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -301,41 +371,58 @@ export default function OnboardingPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredOnboarding.map((item) => (
-                        <TableRow key={item.id}>
+                      {(loading ? Array.from({ length: 5 }) : filteredOnboarding).map((item: any, idx: number) => (
+                        <TableRow key={item?.id ?? idx}>
                           <TableCell>
-                            <div>
-                              <div className="font-medium">
-                                {item.customer.firstName} {item.customer.lastName}
+                            {loading ? (
+                              <div className="animate-pulse h-6 w-40 bg-muted rounded" />
+                            ) : (
+                              <div>
+                                <div className="font-medium">
+                                  {item.customer.firstName} {item.customer.lastName}
+                                </div>
+                                <div className="text-sm text-muted-foreground">{item.customer.customerNumber}</div>
                               </div>
-                              <div className="text-sm text-muted-foreground">{item.customer.customerNumber}</div>
-                            </div>
+                            )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{item.onboardingType.replace("_", " ")}</Badge>
+                            {loading ? <div className="animate-pulse h-5 w-24 bg-muted rounded" /> : <Badge variant="outline">{item.onboardingType.replace("_", " ")}</Badge>}
                           </TableCell>
                           <TableCell>
-                            <div className="space-y-2">
-                              <Progress value={item.completionPercentage} className="w-20" />
-                              <span className="text-sm text-muted-foreground">{item.completionPercentage}%</span>
-                            </div>
+                            {loading ? (
+                              <div className="space-y-2">
+                                <div className="animate-pulse h-3 w-20 bg-muted rounded" />
+                                <div className="animate-pulse h-3 w-10 bg-muted rounded" />
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <Progress value={item.completionPercentage} className="w-20" />
+                                <span className="text-sm text-muted-foreground">{item.completionPercentage}%</span>
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
-                            <Badge className={getStatusColor(item.status)}>{item.currentStep.replace("_", " ")}</Badge>
+                            {loading ? <div className="animate-pulse h-5 w-24 bg-muted rounded" /> : <Badge className={getStatusColor(item.status)}>{item.currentStep.replace("_", " ")}</Badge>}
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">
-                              {item.assignedTo.firstName} {item.assignedTo.lastName}
-                            </div>
+                            {loading ? <div className="animate-pulse h-4 w-20 bg-muted rounded" /> : (
+                              <div className="text-sm">
+                                {item.assignedTo.firstName} {item.assignedTo.lastName}
+                              </div>
+                            )}
                           </TableCell>
-                          <TableCell>{new Date(item.estimatedCompletion).toLocaleDateString()}</TableCell>
+                          <TableCell>{loading ? <div className="animate-pulse h-4 w-16 bg-muted rounded" /> : (item.estimatedCompletion ? new Date(item.estimatedCompletion).toLocaleDateString() : '-')}</TableCell>
                           <TableCell>
-                            <Link to={`/onboarding/${item.id}`}>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </Button>
-                            </Link>
+                            {loading ? (
+                              <div className="animate-pulse h-8 w-20 bg-muted rounded" />
+                            ) : (
+                              <Link to={`/onboarding/${item.id}`}>
+                                <Button variant="ghost" size="sm">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View
+                                </Button>
+                              </Link>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -461,15 +548,15 @@ export default function OnboardingPage() {
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Average Completion Time</span>
-                      <span className="text-sm">{onboardingStats.averageCompletionTime} days</span>
+                      <span className="text-sm">{liveStats.averageCompletionTime} days</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Completion Rate</span>
-                      <span className="text-sm">{onboardingStats.completionRate}%</span>
+                      <span className="text-sm">{liveStats.completionRate}%</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Completed This Month</span>
-                      <span className="text-sm">{onboardingStats.completedThisMonth}</span>
+                      <span className="text-sm">{liveStats.completedThisMonth}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -482,15 +569,15 @@ export default function OnboardingPage() {
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Conversion Rate</span>
-                      <span className="text-sm">{onboardingStats.conversionRate}%</span>
+                      <span className="text-sm">{liveStats.conversionRate}%</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Conversions This Month</span>
-                      <span className="text-sm">{onboardingStats.trialConversions}</span>
+                      <span className="text-sm">{liveStats.trialConversions}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Active Trials</span>
-                      <span className="text-sm">{onboardingStats.trialCustomers}</span>
+                      <span className="text-sm">{liveStats.trialCustomers}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -499,6 +586,65 @@ export default function OnboardingPage() {
           </Tabs>
         </div>
       </main>
+
+      <Dialog open={isInitiateDialogOpen} onOpenChange={setIsInitiateDialogOpen}>
+        <DialogContent className="w-fit max-w-[90vw]">
+          <DialogHeader>
+            <DialogTitle>Initiate Onboarding for Existing Customer</DialogTitle>
+            <DialogDescription>Select a customer to start onboarding. Newest first.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {customersError && <div className="text-sm text-red-600">{customersError}</div>}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search by name, email, or number..."
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="border rounded-md max-h-96 overflow-auto">
+              {loadingCustomers ? (
+                <div className="p-4 text-sm text-muted-foreground">Loading customers...</div>
+              ) : sortedFilteredCustomers.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground">No customers found.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedFilteredCustomers.map((c: any) => (
+                      <TableRow key={c.id}>
+                        <TableCell>
+                          <div className="font-medium">{c.first_name} {c.last_name}</div>
+                          <div className="text-xs text-muted-foreground">{c.customer_number}</div>
+                        </TableCell>
+                        <TableCell className="text-sm">{c.email}</TableCell>
+                        <TableCell className="text-sm">{new Date(c.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Button size="sm" onClick={() => initiateForCustomer(c.id)} disabled={initiating}>
+                            {initiating ? 'Starting...' : 'Initiate'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInitiateDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
