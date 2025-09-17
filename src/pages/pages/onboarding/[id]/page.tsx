@@ -1,16 +1,17 @@
 "use client"
 
-import { useState } from "react"
-import { useParams } from "next/navigation"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react"
+import { useParams } from "react-router-dom"
+import { Sidebar } from "../../../../components/components/layout/sidebar"
+import { Button } from "../../../../components/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
+import { Badge } from "../../../../components/components/ui/badge"
+import { Progress } from "../../../../components/components/ui/progress"
+import { Textarea } from "../../../../components/components/ui/textarea"
+import { Label } from "../../../../components/components/ui/label"
 import { ArrowLeft, CheckCircle, Clock, User, MessageSquare, Play } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router-dom"
+import { getOnboarding, updateOnboardingStep, getOnboardingSteps } from "../../../../../lib/api/onboarding"
 
 // Mock onboarding details
 const mockOnboardingDetails = {
@@ -131,10 +132,43 @@ export default function OnboardingDetailsPage() {
   const params = useParams()
   const onboardingId = params.id as string
   const [newNote, setNewNote] = useState("")
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [data, setData] = useState<any | null>(null)
+  const [steps, setSteps] = useState<any[]>([])
 
-  const handleCompleteStep = (stepId: string) => {
-    console.log("[v0] Completing step:", stepId)
-    // Implementation would update the step status
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const d = await getOnboarding(onboardingId)
+        setData(d)
+        try {
+          const s = await getOnboardingSteps(onboardingId)
+          setSteps(s)
+        } catch {}
+      } catch (e: any) {
+        setError(e?.response?.data?.error?.message || e?.message || 'Failed to load onboarding')
+      } finally {
+        setLoading(false)
+      }
+    }
+    if (onboardingId) void run()
+  }, [onboardingId])
+
+  const handleCompleteStep = async (stepId: string) => {
+    try {
+      await updateOnboardingStep(onboardingId, stepId, {})
+      const d = await getOnboarding(onboardingId)
+      setData(d)
+      try {
+        const s = await getOnboardingSteps(onboardingId)
+        setSteps(s)
+      } catch {}
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const handleAddNote = () => {
@@ -154,7 +188,7 @@ export default function OnboardingDetailsPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <Link href="/onboarding">
+              <Link to="/onboarding">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Onboarding
@@ -162,7 +196,7 @@ export default function OnboardingDetailsPage() {
               </Link>
               <div>
                 <h1 className="text-3xl font-bold text-foreground">
-                  {mockOnboardingDetails.customer.firstName} {mockOnboardingDetails.customer.lastName}
+                  {loading ? 'Loading...' : (data?.customer?.first_name || '') + ' ' + (data?.customer?.last_name || '')}
                 </h1>
                 <p className="text-muted-foreground">
                   Onboarding Progress - {mockOnboardingDetails.customer.customerNumber}
@@ -178,14 +212,14 @@ export default function OnboardingDetailsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Onboarding Progress</CardTitle>
-                  <CardDescription>{mockOnboardingDetails.completionPercentage}% complete</CardDescription>
+                  <CardDescription>{loading ? '' : `${data?.completion_percentage ?? 0}% complete`}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Progress value={mockOnboardingDetails.completionPercentage} className="mb-4" />
+                  <Progress value={loading ? 0 : (data?.completion_percentage ?? 0)} className="mb-4" />
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Started: {new Date(mockOnboardingDetails.startedAt).toLocaleDateString()}</span>
+                    <span>Started: {loading ? '' : (data?.started_at ? new Date(data.started_at).toLocaleDateString() : '-')}</span>
                     <span>
-                      Est. Completion: {new Date(mockOnboardingDetails.estimatedCompletion).toLocaleDateString()}
+                      Est. Completion: -
                     </span>
                   </div>
                 </CardContent>
@@ -199,7 +233,7 @@ export default function OnboardingDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockOnboardingDetails.steps.map((step, index) => (
+                    {((steps && steps.length > 0) ? steps : (data?.steps || mockOnboardingDetails.steps)).map((step: any, index: number) => (
                       <div key={step.id} className="flex items-start space-x-4 p-4 border rounded-lg">
                         <div className="flex-shrink-0 mt-1">{getStepIcon(step.status)}</div>
                         <div className="flex-1 min-w-0">
@@ -310,7 +344,7 @@ export default function OnboardingDetailsPage() {
                     <p className="text-sm font-medium text-muted-foreground">Package</p>
                     <p className="text-sm">{mockOnboardingDetails.order.servicePackage}</p>
                   </div>
-                  <Link href={`/orders/${mockOnboardingDetails.order.id}`}>
+                  <Link to={`/orders/${mockOnboardingDetails.order.id}`}>
                     <Button variant="outline" size="sm" className="w-full bg-transparent">
                       View Order Details
                     </Button>

@@ -4,6 +4,7 @@ import '../styles/globals.css'
 import DashboardPage from './pages/pages/dashboard/page.tsx'
 import { AuthProvider } from '../lib/auth'
 import OnboardingPage from './pages/pages/onboarding/page.tsx'
+import OnboardingDetailsPage from './pages/pages/onboarding/[id]/page.tsx'
 import SettingsPage from './pages/pages/admin/settings/page.tsx'
 import ApplicationAdminPage from './pages/pages/application-admin/page.tsx'
 import FNOAdminPage from './pages/pages/fno/page.tsx'
@@ -55,6 +56,11 @@ function App() {
           <Route path="/onboarding" element={
             <AuthGuard>
               <OnboardingPage />
+            </AuthGuard>
+          } />
+          <Route path="/onboarding/:id" element={
+            <AuthGuard>
+              <OnboardingDetailsPage />
             </AuthGuard>
           } />
           <Route path="/settings" element={
