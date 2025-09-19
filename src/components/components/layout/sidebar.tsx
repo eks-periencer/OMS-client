@@ -1,9 +1,10 @@
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { cn } from "../../../../lib/utils"
 import { useSelector, useDispatch } from "react-redux"
+import type { RootState } from "../../../toolkit/store"
 import { LogoutConfirmationModal } from "../ui/confirmation-modal"
 import { Button } from "../../../components/components/ui/button"
 import { ScrollArea } from "../../../components/components/ui/scroll-area"
@@ -22,8 +23,18 @@ import {
   Home,
   FileText,
   Network,
+  Bell,
 } from "lucide-react"
 import { logout } from "../../../toolkit/authSlice"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog"
+import { getMyNotifications, markNotificationsRead, type NotificationItem } from "../../../../lib/api/notifications"
+import { useNavigate } from "react-router-dom"
+
 
 interface NavItem {
   title: string
@@ -102,22 +113,45 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const location = useLocation()
   const pathname = location.pathname
-  const [thisUser, setThisUser] = useState(null)
+  const navigate = useNavigate()
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  
+  const [notifications, setNotifications] = useState<Array<NotificationItem & { readAt?: string | null }>>([])
+  const unreadCount = notifications.filter((n) => !n.readAt).length
+  const unreadNotifications = notifications.filter((n) => !n.readAt)
+  const NOTIFICATION_STORAGE_KEY = "oms.notifications.readAtMap"
+  const READ_EXPIRY_DAYS = 7
   // const dispatch = useDispatch()
 
-  useEffect(()=>{
-    assignUser()
-  }, [])
   
-  
-  const user = useSelector((state)=> state.authentication.user)
-  
-  console.log(`user: ${user}`)
+  const purgeExpired = useCallback((items: typeof notifications) => {
+    const now = new Date()
+    return items.filter((n) => {
+      if (!n.readAt) return true
+      const readDate = new Date(n.readAt)
+      const diffDays = (now.getTime() - readDate.getTime()) / (1000 * 60 * 60 * 24)
+      return diffDays < READ_EXPIRY_DAYS
+    })
+  }, [READ_EXPIRY_DAYS])
 
-  const assignUser = () =>{
-      setThisUser(user)
-  }
+  useEffect(()=>{
+    const load = async () => {
+      try {
+        const readMapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
+        const readMap: Record<string, string> = readMapRaw ? JSON.parse(readMapRaw) : {}
+        const items = await getMyNotifications()
+        const withRead = items.map((n) => ({ ...n, readAt: readMap[n._id] || null }))
+        setNotifications(purgeExpired(withRead))
+      } catch (e) {
+        console.error("Failed to fetch notifications", e)
+      }
+    }
+    load()
+  }, [purgeExpired])
+  
+  
+  const user = useSelector((state: RootState)=> state.authentication.user)
   const dispatch = useDispatch()
 
   // Show all navigation items regardless of permissions for now
@@ -140,6 +174,23 @@ export function Sidebar() {
   const confirmLogout = () => {
     dispatch(logout())
     window.location.href = "/login"
+  }
+
+  const openNotifications = () =>{
+    setIsNotificationsOpen(true)
+  }
+
+  const closeNotifications = () => {
+    setIsNotificationsOpen(false)
+    // purge any that have expired after read
+    setNotifications((prev) => {
+      const purged = purgeExpired(prev)
+      // persist read map accurately
+      const map: Record<string, string> = {}
+      purged.forEach((n) => { if (n.readAt) map[n._id] = n.readAt })
+      localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
+      return purged
+    })
   }
 
   return (
@@ -168,12 +219,37 @@ export function Sidebar() {
       </div>
 
       {/* User Info */}
-      {!isCollapsed && user && (
+      {user && (
         <div className="p-4 border-b border-sidebar-border">
-          <div className="text-sm font-medium text-sidebar-foreground">
-            {user.first_name} {user.last_name}
-          </div>
-          <div className="text-xs text-sidebar-foreground/70">{user.role_name || "Malicous Actor"}</div>
+          {isCollapsed ? (
+            <div className="flex items-center justify-center">
+              <div className="relative" onClick={openNotifications}>
+                <Bell size={18} className="cursor-pointer" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div className="text-sm font-medium text-sidebar-foreground">
+                  {user.first_name} {user.last_name}
+                </div>
+                <div className="text-xs text-sidebar-foreground/70">{user.role_name || "Malicous Actor"}</div>
+              </div>
+              <div className="relative" onClick={openNotifications}>
+                <Bell size={25} className="cursor-pointer" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -301,6 +377,51 @@ export function Sidebar() {
         onClose={() => setIsLogoutModalOpen(false)}
         onConfirm={confirmLogout}
       />
+
+      <Dialog open={isNotificationsOpen} onOpenChange={(open)=> open ? openNotifications() : closeNotifications()}>
+          <DialogContent showCloseButton>
+            <DialogHeader>
+              <DialogTitle>Notifications</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-72 overflow-auto space-y-3">
+            {unreadNotifications.length === 0 ? (
+              <div className="py-10 text-center">
+                <Inbox className="mx-auto h-8 w-8 text-muted-foreground mb-2 animate-pulse" />
+                <div className="text-sm text-muted-foreground">No new notifications</div>
+              </div>
+            ) : (
+              unreadNotifications.map((n) => (
+                <button
+                  key={n._id}
+                  className="w-full text-left border rounded-md p-3 hover:bg-accent/40"
+                  onClick={() => {
+                    setNotifications((prev) => {
+                      const nowIso = new Date().toISOString()
+                      const next = prev.map((it) => it._id === n._id && !it.readAt ? { ...it, readAt: nowIso } : it)
+                      const mapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
+                      const map: Record<string, string> = mapRaw ? JSON.parse(mapRaw) : {}
+                      map[n._id] = map[n._id] || nowIso
+                      localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
+                      return next
+                    })
+                    markNotificationsRead([n._id]).catch(() => {})
+                    if (n.url) {
+                      closeNotifications()
+                      navigate(n.url)
+                    }
+                  }}
+                >
+                  <div className="text-sm font-medium">{n.title}</div>
+                  <div className="text-sm text-muted-foreground">{n.message}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {new Date(n.createdAt).toLocaleString()}
+                  </div>
+                </button>
+              ))
+            )}
+            </div>
+          </DialogContent>
+      </Dialog>
     </div>
   )
 }

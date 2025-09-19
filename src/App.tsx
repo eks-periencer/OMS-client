@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import  Sidebar  from './pages/pages/admin/settings/page.tsx'
+import React from 'react'
 import '../styles/globals.css'
 import DashboardPage from './pages/pages/dashboard/page.tsx'
 import { AuthProvider } from '../lib/auth'
