@@ -17,6 +17,8 @@ import { useOnboarding } from "../../../../hooks/useOnboarding"
 import { initiateOnboarding } from "../../../../lib/api/onboarding"
 import { useCustomers } from "../../../../hooks/useCustomers"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/components/ui/dialog"
+import { SlaStatusBadge } from "../../../components/components/onboarding/SlaStatusBadge"
+import { SlaMetricsCard } from "../../../components/components/onboarding/SlaMetricsCard"
 
 const mockTrialCustomers = [
   {
@@ -99,7 +101,7 @@ export default function OnboardingPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
-  const { items, loading, error } = useOnboarding()
+  const { items, loading, error, metrics, metricsLoading } = useOnboarding()
   const navigate = useNavigate()
   const [initiating, setInitiating] = useState(false)
   const { customers, loading: loadingCustomers, error: customersError } = useCustomers()
@@ -145,6 +147,15 @@ export default function OnboardingPage() {
         if (c?.id) customerById[c.id] = c
       }
     }
+    
+    // Build SLA status lookup by onboarding ID
+    const slaByOnboardingId: Record<string, any> = {}
+    if (metrics?.slaStatuses) {
+      for (const sla of metrics.slaStatuses) {
+        slaByOnboardingId[sla.onboardingId] = sla
+      }
+    }
+    
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line no-console
       console.log('[OnboardingPage] raw items:', items)
@@ -155,6 +166,8 @@ export default function OnboardingPage() {
       const lastName = c?.last_name || c?.lastName || ''
       const email = c?.email || ''
       const customerNumber = c?.customer_number || c?.customerNumber || (o.customer_id || '').slice(0, 8)
+      const slaStatus = slaByOnboardingId[o.id]
+      
       return {
       id: o.id,
       customer: {
@@ -171,6 +184,11 @@ export default function OnboardingPage() {
       startedAt: o.started_at || "",
       estimatedCompletion: "",
       status: (o.current_step && o.current_step !== 'completed') ? 'in_progress' : 'completed',
+      slaStatus: slaStatus?.slaStatus || 'unknown',
+      slaHours: slaStatus?.slaHours || 0,
+      elapsedHours: slaStatus?.elapsedHours || 0,
+      dueAt: slaStatus?.dueAt,
+      slaAlertsCount: slaStatus?.slaAlertsCount || 0,
     }});
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line no-console
@@ -187,7 +205,7 @@ export default function OnboardingPage() {
 
       return matchesSearch && matchesStatus && matchesType
     })
-  }, [items, customers, searchTerm, statusFilter, typeFilter])
+  }, [items, customers, metrics, searchTerm, statusFilter, typeFilter])
 
   const liveStats = useMemo(() => {
     const total = items.length
@@ -298,6 +316,13 @@ export default function OnboardingPage() {
             </Card>
           </div>
 
+          {/* SLA Metrics */}
+          {metrics && (
+            <div className="mb-6">
+              <SlaMetricsCard summary={metrics.summary} loading={metricsLoading} />
+            </div>
+          )}
+
           <Tabs defaultValue="onboarding" className="space-y-6">
             <TabsList>
               <TabsTrigger value="onboarding">Active Onboarding</TabsTrigger>
@@ -365,6 +390,7 @@ export default function OnboardingPage() {
                         <TableHead>Type</TableHead>
                         <TableHead>Progress</TableHead>
                         <TableHead>Current Step</TableHead>
+                        <TableHead>SLA Status</TableHead>
                         <TableHead>Assigned To</TableHead>
                         <TableHead>Est. Completion</TableHead>
                         <TableHead>Actions</TableHead>
@@ -403,6 +429,17 @@ export default function OnboardingPage() {
                           </TableCell>
                           <TableCell>
                             {loading ? <div className="animate-pulse h-5 w-24 bg-muted rounded" /> : <Badge className={getStatusColor(item.status)}>{item.currentStep.replace("_", " ")}</Badge>}
+                          </TableCell>
+                          <TableCell>
+                            {loading ? <div className="animate-pulse h-6 w-20 bg-muted rounded" /> : (
+                              <SlaStatusBadge 
+                                status={item.slaStatus} 
+                                elapsedHours={item.elapsedHours}
+                                slaHours={item.slaHours}
+                                dueAt={item.dueAt}
+                                showDetails={false}
+                              />
+                            )}
                           </TableCell>
                           <TableCell>
                             {loading ? <div className="animate-pulse h-4 w-20 bg-muted rounded" /> : (

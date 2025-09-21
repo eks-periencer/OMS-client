@@ -70,15 +70,16 @@ export interface Order {
 export type OrderState =
   | "created"
   | "validated"
+  | "enriched"
   | "fno_submitted"
   | "fno_accepted"
-  | "in_progress"
+  | "fno_rejected"
   | "installation_scheduled"
+  | "in_progress"
   | "installed"
   | "activated"
   | "completed"
   | "cancelled"
-  | "rejected"
 
 export interface OrderStateHistory {
   id: string

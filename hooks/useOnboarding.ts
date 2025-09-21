@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
-import { listActiveOnboarding, getOnboarding, assignOnboarding, notifyOnboarding, type OnboardingItem } from '../lib/api/onboarding';
+import { listActiveOnboarding, getOnboarding, assignOnboarding, notifyOnboarding, getOnboardingMetrics, type OnboardingItem, type OnboardingMetrics } from '../lib/api/onboarding';
 
 export function useOnboarding() {
   const [items, setItems] = useState<OnboardingItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<OnboardingMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState<boolean>(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -27,9 +30,41 @@ export function useOnboarding() {
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  const refreshMetrics = useCallback(async () => {
+    setMetricsLoading(true);
+    setMetricsError(null);
+    try {
+      const data = await getOnboardingMetrics();
+      setMetrics(data);
+    } catch (e: any) {
+      setMetricsError(e?.response?.data?.error?.message || e?.message || 'Failed to load metrics');
+      if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-console
+        console.error('[useOnboarding] metrics error:', e);
+      }
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, []);
 
-  return { items, loading, error, refresh, getOnboarding, assignOnboarding, notifyOnboarding };
+  useEffect(() => { 
+    void refresh(); 
+    void refreshMetrics();
+  }, [refresh, refreshMetrics]);
+
+  return { 
+    items, 
+    loading, 
+    error, 
+    refresh, 
+    metrics, 
+    metricsLoading, 
+    metricsError, 
+    refreshMetrics,
+    getOnboarding, 
+    assignOnboarding, 
+    notifyOnboarding 
+  };
 }
 
 

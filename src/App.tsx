@@ -15,6 +15,7 @@ import UsersPage from './pages/pages/admin/users/page.tsx'
 import LoginPage from './pages/pages/login/page.tsx'
 import Escalations from './pages/pages/escalations/page.tsx'
 import OrderCreate from './pages/pages/orders/create/page.tsx'
+import OrderDetailsPage from './pages/pages/orders/[id]/page.tsx'
 import CustomerCreate from './pages/pages/customers/create/page.tsx'
 import CustomerDetailsPage from './pages/pages/customers/[id]/page.tsx'
 import EditCustomerPage from './pages/pages/customers/[id]/edit/page.tsx'
@@ -103,9 +104,14 @@ function App() {
               <UsersPage />
             </AuthGuard>
           } />
-          <Route path='/orders/create' element={
+          <Route path="/orders/create" element={
             <AuthGuard>
               <OrderCreate/>
+            </AuthGuard>
+          } />
+          <Route path="/orders/:id" element={
+            <AuthGuard>
+              <OrderDetailsPage />
             </AuthGuard>
           } />
           <Route path='/customers/create' element={
