@@ -1,6 +1,6 @@
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Sidebar } from "../../../../components/components/layout/sidebar"
 import { Button } from "../../../../components/components/ui/button"
@@ -12,15 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Alert, AlertDescription } from "../../../../components/components/ui/alert"
 import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
-
-const mockCustomers = [
-  { id: "1", name: "John Smith", email: "john@example.com" },
-  { id: "2", name: "Sarah Johnson", email: "sarah@example.com" },
-  { id: "3", name: "Mike Davis", email: "mike@example.com" },
-]
+import { useOrders } from "../../../../../hooks/useOrders"
+import { useCustomers } from "../../../../../hooks/useCustomers"
+import Swal from "sweetalert2"
 
 export default function CreateOrderPage() {
   const navigate = useNavigate()
+  const { createOrder } = useOrders()
+  const { customers, loading: customersLoading } = useCustomers()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -44,12 +43,44 @@ export default function CreateOrderPage() {
         throw new Error("Please fill in all required fields")
       }
 
-      // Mock order creation
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const orderData = {
+        customerId,
+        orderType: "new_install", // This should always be 'new_install' for new orders
+        priority: priority as "low" | "normal" | "high" | "urgent",
+        serviceAddress: {
+          street,
+          city,
+          province,
+          postalCode
+        },
+        serviceDetails: {
+          serviceType, // This is the actual service type (fiber, wireless, hybrid)
+          bandwidth: servicePackage,
+          installationType: "standard"
+        },
+        notes: notes || undefined
+      }
+
+      await createOrder(orderData)
+      
+      await Swal.fire({
+        icon: 'success',
+        title: 'Order Created!',
+        text: 'The order has been successfully created.',
+        timer: 2000,
+        showConfirmButton: false
+      })
 
       navigate("/orders")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create order")
+      const errorMessage = err instanceof Error ? err.message : "Failed to create order"
+      setError(errorMessage)
+      
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: errorMessage
+      })
     } finally {
       setIsLoading(false)
     }
@@ -70,7 +101,10 @@ export default function CreateOrderPage() {
             </Link>
             <div className="ml-60">
               <h1 className="text-3xl font-bold text-foreground">Create New Order</h1>
-              <p className="text-muted-foreground">Create a new customer service order</p>
+              <p className="text-muted-foreground">Create a new customer installation order</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Order Type: <span className="font-medium">New Installation</span>
+              </p>
             </div>
           </div>
 
@@ -84,14 +118,14 @@ export default function CreateOrderPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="customer">Customer *</Label>
-                  <Select value={customerId} onValueChange={setCustomerId} required>
+                  <Select value={customerId} onValueChange={setCustomerId} required disabled={customersLoading}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a customer" />
+                      <SelectValue placeholder={customersLoading ? "Loading customers..." : "Select a customer"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockCustomers.map((customer) => (
+                      {customers.map((customer) => (
                         <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name} - {customer.email}
+                          {customer.first_name} {customer.last_name} - {customer.email}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -104,7 +138,7 @@ export default function CreateOrderPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Service Information</CardTitle>
-                <CardDescription>Configure the service details</CardDescription>
+                <CardDescription>Configure the service details for this new installation order</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -119,6 +153,9 @@ export default function CreateOrderPage() {
                       <SelectItem value="hybrid">Hybrid Solution</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    This determines the type of service to be installed
+                  </p>
                 </div>
 
                 <div className="space-y-2">

@@ -8,65 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Badge } from "../../../components/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
-import { Plus, Search, Eye, Edit, MoreHorizontal } from "lucide-react"
+import { Plus, Search, Eye, Edit, MoreHorizontal, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/components/ui/dropdown-menu"
-import {Link} from "react-router-dom"
-
-// Mock orders data
-const mockOrders = [
-  {
-    id: "1",
-    orderNumber: "ORD-2025-001",
-    customer: { firstName: "John", lastName: "Smith", email: "john@example.com" },
-    serviceType: "Fiber",
-    servicePackage: "Premium 100Mbps",
-    currentState: "in_progress",
-    priority: "high",
-    fno: { name: "Openserve", code: "OS" },
-    fnoReference: "OS-REF-12345",
-    createdAt: "2025-01-09T10:30:00Z",
-    estimatedCompletion: "2025-01-15T00:00:00Z",
-  },
-  {
-    id: "2",
-    orderNumber: "ORD-2025-002",
-    customer: { firstName: "Sarah", lastName: "Johnson", email: "sarah@example.com" },
-    serviceType: "Wireless",
-    servicePackage: "Standard 50Mbps",
-    currentState: "fno_submitted",
-    priority: "normal",
-    fno: { name: "Vumatel", code: "VUM" },
-    fnoReference: null,
-    createdAt: "2025-01-09T09:15:00Z",
-    estimatedCompletion: "2025-01-12T00:00:00Z",
-  },
-  {
-    id: "3",
-    orderNumber: "ORD-2025-003",
-    customer: { firstName: "Mike", lastName: "Davis", email: "mike@example.com" },
-    serviceType: "Fiber",
-    servicePackage: "Business 200Mbps",
-    currentState: "installation_scheduled",
-    priority: "urgent",
-    fno: { name: "MetroFibre", code: "MF" },
-    fnoReference: "MF-APP-67890",
-    createdAt: "2025-01-09T08:45:00Z",
-    estimatedCompletion: "2025-01-10T00:00:00Z",
-  },
-  {
-    id: "4",
-    orderNumber: "ORD-2025-004",
-    customer: { firstName: "Emma", lastName: "Wilson", email: "emma@example.com" },
-    serviceType: "Fiber",
-    servicePackage: "Premium 100Mbps",
-    currentState: "completed",
-    priority: "normal",
-    fno: { name: "Frogfoot Networks", code: "FF" },
-    fnoReference: "FF-ORD-11111",
-    createdAt: "2025-01-08T14:20:00Z",
-    estimatedCompletion: "2025-01-09T00:00:00Z",
-  },
-]
+import { Link } from "react-router-dom"
+import { useOrders } from "../../../../hooks/useOrders"
+import { toast } from "sonner"
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -103,21 +49,42 @@ function getPriorityColor(priority: string) {
 }
 
 export default function OrdersPage() {
+  const { items: orders, loading, error, refresh } = useOrders()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
 
-  const filteredOrders = mockOrders.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${order.customer.firstName} ${order.customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (order.order_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.customer?.email || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || order.currentState === statusFilter
+    const matchesStatus = statusFilter === "all" || order.current_state === statusFilter
     const matchesPriority = priorityFilter === "all" || order.priority === priorityFilter
 
     return matchesSearch && matchesStatus && matchesPriority
   })
+
+  if (error) {
+    return (
+      <div className="flex h-screen bg-background">
+        <Sidebar />
+        <main className="flex-1 overflow-auto">
+          <div className="p-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <p className="text-red-600 mb-4">{error}</p>
+                  <Button onClick={refresh}>Retry</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen bg-background">
@@ -131,7 +98,7 @@ export default function OrdersPage() {
               <h1 className="text-3xl font-bold text-foreground">Orders</h1>
               <p className="text-muted-foreground">Manage and track customer orders</p>
             </div>
-            <Link href="/orders/create">
+            <Link to="/orders/create">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Order
@@ -191,84 +158,94 @@ export default function OrdersPage() {
           {/* Orders Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Orders ({filteredOrders.length})</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Orders ({filteredOrders.length})
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Order Number</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>FNO</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {order.customer.firstName} {order.customer.lastName}
-                          </div>
-                          <div className="text-sm text-muted-foreground">{order.customer.email}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{order.serviceType}</div>
-                          <div className="text-sm text-muted-foreground">{order.servicePackage}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{order.fno.name}</div>
-                          {order.fnoReference && (
-                            <div className="text-sm text-muted-foreground">{order.fnoReference}</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(order.currentState)}>
-                          {order.currentState.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getPriorityColor(order.priority)}>{order.priority}</Badge>
-                      </TableCell>
-                      <TableCell>{new Date(order.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/orders/${order.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/orders/${order.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Order
-                              </Link>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+              {loading && filteredOrders.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span>Loading orders...</span>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order Number</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Service</TableHead>
+                      <TableHead>FNO</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.order_number || 'N/A'}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {order.customer?.first_name || ''} {order.customer?.last_name || ''}
+                            </div>
+                            <div className="text-sm text-muted-foreground">{order.customer?.email || 'N/A'}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{order.service_type || 'N/A'}</div>
+                            <div className="text-sm text-muted-foreground">{order.service_package || 'N/A'}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{order.fno?.name || 'N/A'}</div>
+                            {order.fno_reference && (
+                              <div className="text-sm text-muted-foreground">{order.fno_reference}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(order.current_state || 'created')}>
+                            {(order.current_state || 'created').replace("_", " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getPriorityColor(order.priority || 'normal')}>{order.priority || 'normal'}</Badge>
+                        </TableCell>
+                        <TableCell>{order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link to={`/orders/${order.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link to={`/orders/${order.id}/edit`}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Order
+                                </Link>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>

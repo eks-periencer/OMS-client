@@ -11,7 +11,8 @@ import { Textarea } from "../../../../components/components/ui/textarea"
 import { Label } from "../../../../components/components/ui/label"
 import { ArrowLeft, CheckCircle, Clock, User, MessageSquare, Play } from "lucide-react"
 import { Link } from "react-router-dom"
-import { getOnboarding, updateOnboardingStep, getOnboardingSteps } from "../../../../../lib/api/onboarding"
+import { getOnboarding, updateOnboardingStep, getOnboardingSteps, getOnboardingTransitions } from "../../../../../lib/api/onboarding"
+import { toast } from "sonner"
 
 // Mock onboarding details
 const mockOnboardingDetails = {
@@ -133,9 +134,56 @@ export default function OnboardingDetailsPage() {
   const onboardingId = params.id as string
   const [newNote, setNewNote] = useState("")
   const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
   const [data, setData] = useState<any | null>(null)
   const [steps, setSteps] = useState<any[]>([])
+  const [transitionLoading, setTransitionLoading] = useState<boolean>(false)
+
+  function normalizeSteps(inputSteps: any[], rawCurrent: string | undefined): any[] {
+    const currentValue = (rawCurrent || 'initiated').toString()
+    
+    // PRD-compliant onboarding workflow steps (matches backend and onboarding service)
+    const canonicalSteps = [
+      { id: 'initiated', name: 'Onboarding Initiated' },
+      { id: 'welcome_sent', name: 'Welcome Email Sent' },
+      { id: 'service_setup', name: 'Service Configuration' },
+      { id: 'equipment_ordered', name: 'Equipment Ordered' },
+      { id: 'equipment_shipped', name: 'Equipment Shipped' },
+      { id: 'installation_scheduled', name: 'Installation Scheduled' },
+      { id: 'installation_completed', name: 'Installation Completed' },
+      { id: 'service_activated', name: 'Service Activated' },
+      { id: 'follow_up', name: 'Follow-up & Support' },
+      { id: 'completed', name: 'Onboarding Completed' }
+    ]
+    
+    // Use canonical steps if inputSteps is empty or doesn't match expected format
+    const stepsToUse = inputSteps && inputSteps.length > 0 ? inputSteps : canonicalSteps
+    const ids = stepsToUse.map((x: any) => x.id)
+    
+    // Enhanced aliasing for backward compatibility
+    const alias: Record<string, string> = {
+      activated: 'service_activated',
+      activation: 'service_activated',
+      rep_contact_scheduled: 'service_setup', // Map old backend state to new flow
+      install_scheduled: 'installation_scheduled',
+      install_completed: 'installation_completed'
+    }
+    
+    let currentIndex = ids.indexOf(currentValue)
+    if (currentIndex === -1) {
+      const alt = alias[currentValue]
+      if (alt) currentIndex = ids.indexOf(alt)
+    }
+    if (currentIndex === -1) {
+      currentIndex = ids.findIndex((id: string) => id.endsWith(currentValue) || currentValue.endsWith(id))
+    }
+    if (currentIndex === -1) currentIndex = 0
+    
+    return stepsToUse.map((x: any, idx: number) => ({
+      ...x,
+      status: idx < currentIndex ? 'completed' : idx === currentIndex ? 'in_progress' : 'pending'
+    }))
+  }
 
   useEffect(() => {
     const run = async () => {
@@ -145,8 +193,9 @@ export default function OnboardingDetailsPage() {
         const d = await getOnboarding(onboardingId)
         setData(d)
         try {
+          // Fetch steps and reconcile with current state from DB row
           const s = await getOnboardingSteps(onboardingId)
-          setSteps(s)
+          setSteps(normalizeSteps(s, (d as any)?.current_step))
         } catch {}
       } catch (e: any) {
         setError(e?.response?.data?.error?.message || e?.message || 'Failed to load onboarding')
@@ -157,17 +206,59 @@ export default function OnboardingDetailsPage() {
     if (onboardingId) void run()
   }, [onboardingId])
 
-  const handleCompleteStep = async (stepId: string) => {
+  const handleCompleteStep = async (_clickedStepId: string) => {
     try {
-      await updateOnboardingStep(onboardingId, stepId, {})
+      setTransitionLoading(true)
+      // Prefer backend-provided transitions
+      let nextState: string | null = null
+      try {
+        const transitions = await getOnboardingTransitions(onboardingId)
+        // Choose the first transition's toState
+        nextState = transitions?.[0]?.toState || null
+      } catch {}
+
+      // Fallback: derive from steps list ordering
+      if (!nextState) {
+        const source = (steps && steps.length > 0) ? steps : (data?.steps || [])
+        const currentIdx = source.findIndex((s: any) => s.status === 'in_progress')
+        if (currentIdx >= 0 && currentIdx + 1 < source.length) {
+          nextState = source[currentIdx + 1].id
+        }
+      }
+
+      if (!nextState) {
+        throw new Error('No valid transition available from current state')
+      }
+
+      await updateOnboardingStep(onboardingId, nextState, {})
       const d = await getOnboarding(onboardingId)
       setData(d)
       try {
         const s = await getOnboardingSteps(onboardingId)
-        setSteps(s)
+        setSteps(normalizeSteps(s, (d as any)?.current_step))
       } catch {}
+      try {
+        const mod: any = (await import(/* @vite-ignore */ 'sweetalert2').catch(() => null)) as any
+        if (mod && mod.default) {
+          await mod.default.fire({ icon: 'success', title: 'Step updated', text: `Transitioned to ${nextState}` })
+        } else {
+          toast.success(`Transitioned to ${nextState}`)
+        }
+      } catch { toast.success(`Transitioned to ${nextState}`) }
     } catch (e) {
       console.error(e)
+      const msg = (e as any)?.response?.data?.error?.message || (e as any)?.message || 'Failed to complete step'
+      setError(msg)
+      try {
+        const mod: any = (await import(/* @vite-ignore */ 'sweetalert2').catch(() => null)) as any
+        if (mod && mod.default) {
+          await mod.default.fire({ icon: 'error', title: 'Update failed', text: msg })
+        } else {
+          toast.error(msg)
+        }
+      } catch { toast.error(msg) }
+    } finally {
+      setTransitionLoading(false)
     }
   }
 
@@ -233,7 +324,7 @@ export default function OnboardingDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {((steps && steps.length > 0) ? steps : (data?.steps || mockOnboardingDetails.steps)).map((step: any, index: number) => (
+                    {(steps && steps.length > 0 ? steps : []).map((step: any) => (
                       <div key={step.id} className="flex items-start space-x-4 p-4 border rounded-lg">
                         <div className="flex-shrink-0 mt-1">{getStepIcon(step.status)}</div>
                         <div className="flex-1 min-w-0">
@@ -255,8 +346,15 @@ export default function OnboardingDetailsPage() {
                           )}
                           {step.status === "in_progress" && (
                             <div className="mt-3">
-                              <Button size="sm" onClick={() => handleCompleteStep(step.id)}>
-                                Mark Complete
+                              <Button size="sm" onClick={() => handleCompleteStep(step.id)} disabled={transitionLoading}>
+                                {transitionLoading ? 'Updating…' : 'Mark Complete'}
+                              </Button>
+                            </div>
+                          )}
+                          {step.status !== "in_progress" && (
+                            <div className="mt-3">
+                              <Button variant="outline" size="sm" disabled>
+                                {step.status === 'completed' ? 'Completed' : 'Pending'}
                               </Button>
                             </div>
                           )}
