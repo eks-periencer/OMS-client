@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Save, TestTube, Activity, Settings, AlertCircle } from "lucide-react"
-import Link from "next/link"
+import { Link } from "react-router-dom"
 
 // Mock FNO details
 const mockFNODetails = {

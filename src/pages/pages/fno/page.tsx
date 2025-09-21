@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Button } from "../../../components/components/ui/button"
 import { Input } from "../../../components/components/ui/input"
@@ -9,108 +9,28 @@ import { Badge } from "../../../components/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/components/ui/tabs"
-import { Plus, Search, Settings, Network, Activity, AlertCircle, CheckCircle, Clock } from "lucide-react"
-import { Link } from "react-router-dom"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/components/ui/dialog"
+import { Search, Settings, Network, Activity, AlertCircle, CheckCircle, Clock, X, ExternalLink, Plus } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom"
+import { getFnoStats, getFNOs, getIntegrationLogs } from "../../../../lib/api/FNO"
+import apiClient from "../../../../lib/api/client"
 
-// Mock FNO data
-const mockFNOs = [
-  {
-    id: "1",
-    name: "Openserve",
-    code: "OS",
-    integrationType: "api",
-    apiEndpoint: "https://api.openserve.co.za",
-    portalUrl: "https://portal.openserve.co.za",
-    coverageAreas: ["Western Cape", "Gauteng", "KwaZulu-Natal"],
-    isActive: true,
-    lastSync: "2025-01-09T14:30:00Z",
-    status: "connected",
-    ordersSubmitted: 145,
-    successRate: 98.6,
-  },
-  {
-    id: "2",
-    name: "Vumatel",
-    code: "VUM",
-    integrationType: "manual",
-    portalUrl: "https://portal.vumatel.co.za",
-    coverageAreas: ["Western Cape", "Gauteng"],
-    isActive: true,
-    lastSync: null,
-    status: "active",
-    ordersSubmitted: 89,
-    successRate: 95.5,
-  },
-  {
-    id: "3",
-    name: "Frogfoot Networks",
-    code: "FF",
-    integrationType: "manual",
-    portalUrl: "https://portal.frogfoot.com",
-    coverageAreas: ["Western Cape", "Eastern Cape"],
-    isActive: true,
-    lastSync: null,
-    status: "active",
-    ordersSubmitted: 67,
-    successRate: 92.5,
-  },
-  {
-    id: "4",
-    name: "MetroFibre",
-    code: "MF",
-    integrationType: "api",
-    apiEndpoint: "https://api.metrofibre.co.za",
-    portalUrl: "https://portal.metrofibre.co.za",
-    coverageAreas: ["Western Cape", "Gauteng", "KwaZulu-Natal"],
-    isActive: false,
-    lastSync: "2025-01-08T09:15:00Z",
-    status: "error",
-    ordersSubmitted: 23,
-    successRate: 87.0,
-  },
-]
+/*
+API endpoints used on this page
+- Base URL resolves in lib/api/client.ts as:
+  - import.meta.env.VITE_API_BASE_URL
+  - OR window.__OMS_API_BASE_URL__ (if present)
+  - OR https://oms-server-ntlv.onrender.com
 
-const mockIntegrationLogs = [
-  {
-    id: "1",
-    fnoName: "Openserve",
-    orderNumber: "ORD-2025-001",
-    action: "submit",
-    status: "success",
-    responseTime: 1250,
-    timestamp: "2025-01-09T14:30:00Z",
-    details: "Order submitted successfully",
-  },
-  {
-    id: "2",
-    fnoName: "MetroFibre",
-    orderNumber: "ORD-2025-002",
-    action: "status_update",
-    status: "error",
-    responseTime: 5000,
-    timestamp: "2025-01-09T14:25:00Z",
-    details: "Connection timeout",
-  },
-  {
-    id: "3",
-    fnoName: "Vumatel",
-    orderNumber: "ORD-2025-003",
-    action: "manual_submit",
-    status: "success",
-    responseTime: null,
-    timestamp: "2025-01-09T14:20:00Z",
-    details: "Manual application completed",
-  },
-]
+- Requests made:
+  - GET {baseURL}/fno/stats            → header tiles (totals/metrics)
+  - GET {baseURL}/fno                  → FNO list table
+  - GET {baseURL}/fno/integrationLogs  → logs tab
+*/
 
-const fnoStats = {
-  totalFNOs: 4,
-  activeFNOs: 1,
-  apiIntegrations: 2,
-  manualIntegrations: 2,
-  totalOrders: 324,
-  averageSuccessRate: 93.4,
-}
+// Using API data only (no mock arrays)
+
+// No numeric fallbacks; display '-' until data is loaded
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -156,11 +76,72 @@ function getLogStatusColor(status: string) {
 }
 
 export default function FNOPage() {
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [fnoRows, setFnoRows] = useState<Array<Record<string, unknown>>>([])
+  const [logs, setLogs] = useState<Array<Record<string, unknown>>>([])
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null)
+  const [selectedFno, setSelectedFno] = useState<any>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const filteredFNOs = mockFNOs.filter((fno) => {
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        console.log("[FNO] Fetching FNO data...")
+        
+        const [s, fnos, l] = await Promise.all([
+          getFnoStats().catch((e) => { 
+            console.error("[FNO] Error fetching stats:", e); 
+            return null; 
+          }),
+          getFNOs().catch((e) => { 
+            console.error("[FNO] Error fetching FNOs:", e); 
+            return []; 
+          }),
+          getIntegrationLogs().catch((e) => { 
+            console.error("[FNO] Error fetching logs:", e); 
+            return []; 
+          }),
+        ])
+        
+        if (!mounted) return
+        console.log("[FNO] Loaded:", { stats: !!s, fnos: fnos.length, logs: l.length })
+        setStats(s)
+        setFnoRows(Array.isArray(fnos) ? fnos : [])
+        setLogs(Array.isArray(l) ? l : [])
+      } catch (e) {
+        console.error("[FNO] Unexpected error in useEffect:", e)
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
+
+  useEffect(() => {
+    console.log("[FNO] State → rows:", fnoRows.length, "logs:", logs.length, "stats:", stats)
+  }, [fnoRows, logs, stats])
+
+  const normalizedFNOs = useMemo(() => {
+    if (!fnoRows?.length) return []
+    return fnoRows.map((row: Record<string, unknown>) => ({
+      id: String(row.id ?? (row as any)._id ?? Math.random()),
+      name: (row as any).name ?? "",
+      code: (row as any).code ?? "",
+      integrationType: (row as any).type ?? (row as any).integration_type ?? "manual",
+      apiEndpoint: (row as any).api_endpoint ?? null,
+      portalUrl: (row as any).portal_url ?? null,
+      coverageAreas: Array.isArray((row as any).coverage_areas) ? ((row as any).coverage_areas as string[]) : [],
+      isActive: Boolean((row as any).is_active ?? true),
+      lastSync: (row as any).lastSync ?? null,
+      status: (row as any).status ?? "disconnected",
+      ordersSubmitted: (row as any).orders ?? 0,
+      successRate: (row as any).successRate ?? 0,
+    }))
+  }, [fnoRows])
+
+  const filteredFNOs = normalizedFNOs.filter((fno) => {
     const matchesSearch =
       fno.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fno.code.toLowerCase().includes(searchTerm.toLowerCase())
@@ -181,6 +162,20 @@ export default function FNOPage() {
     // Implementation would sync order statuses
   }
 
+  const handleFnoClick = (fno: any) => {
+    setSelectedFno(fno)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setSelectedFno(null)
+  }
+
+  const handleAddFno = () => {
+    navigate('/fno/create')
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -193,12 +188,10 @@ export default function FNOPage() {
               <h1 className="text-3xl font-bold text-gray-900">FNO Management</h1>
               <p className="text-gray-600">Manage Fiber Network Operator integrations and configurations</p>
             </div>
-            <Link to="/fno/create">
-              <Button className="bg-black text-white hover:bg-gray-800">
+            <Button onClick={handleAddFno} className="bg-black text-white hover:bg-gray-800">
                 <Plus className="mr-2 h-4 w-4" />
                 Add FNO
               </Button>
-            </Link>
           </div>
 
           {/* Stats Grid */}
@@ -209,8 +202,8 @@ export default function FNOPage() {
                 <Network className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{fnoStats.totalFNOs}</div>
-                <p className="text-xs text-gray-500">{fnoStats.activeFNOs} active</p>
+                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.totals?.totalFNOs ?? '-'}</div>
+                <p className="text-xs text-gray-500">{(stats as any)?.totals?.active ?? '-'} active</p>
               </CardContent>
             </Card>
 
@@ -220,8 +213,8 @@ export default function FNOPage() {
                 <Activity className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{fnoStats.apiIntegrations}</div>
-                <p className="text-xs text-gray-500">{fnoStats.manualIntegrations} manual</p>
+                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.totals?.apiIntegrations ?? '-'}</div>
+                <p className="text-xs text-gray-500">{(stats as any)?.totals?.manualIntegrations ?? '-'} manual</p>
               </CardContent>
             </Card>
 
@@ -231,7 +224,7 @@ export default function FNOPage() {
                 <Clock className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{fnoStats.totalOrders}</div>
+                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.metrics?.ordersProcessedThisMonth ?? '-'}</div>
                 <p className="text-xs text-gray-500">this month</p>
               </CardContent>
             </Card>
@@ -242,7 +235,7 @@ export default function FNOPage() {
                 <Activity className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{fnoStats.averageSuccessRate}%</div>
+                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.metrics?.averageSuccessRate ?? '-'}%</div>
                 <p className="text-xs text-gray-500">average</p>
               </CardContent>
             </Card>
@@ -313,7 +306,7 @@ export default function FNOPage() {
                         <TableHead className="text-gray-700 font-medium">FNO</TableHead>
                         <TableHead className="text-gray-700 font-medium">Type</TableHead>
                         <TableHead className="text-gray-700 font-medium">Status</TableHead>
-                        <TableHead className="text-gray-700 font-medium">Coverage Areas</TableHead>
+                        <TableHead className="text-gray-700 font-medium w-48">Coverage Areas</TableHead>
                         <TableHead className="text-gray-700 font-medium">Orders</TableHead>
                         <TableHead className="text-gray-700 font-medium">Success Rate</TableHead>
                         <TableHead className="text-gray-700 font-medium">Last Sync</TableHead>
@@ -322,7 +315,7 @@ export default function FNOPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredFNOs.map((fno) => (
-                        <TableRow key={fno.id} className="border-gray-200">
+                        <TableRow key={fno.id} className="border-gray-200 cursor-pointer hover:bg-gray-50" onClick={() => handleFnoClick(fno)}>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               {getStatusIcon(fno.status)}
@@ -340,10 +333,10 @@ export default function FNOPage() {
                           <TableCell>
                             <Badge className={getStatusColor(fno.status)}>{fno.status}</Badge>
                           </TableCell>
-                          <TableCell>
-                            <div className="text-sm text-gray-800">
-                              {fno.coverageAreas.slice(0, 2).join(", ")}
-                              {fno.coverageAreas.length > 2 && ` + ${fno.coverageAreas.length - 2} more`}
+                          <TableCell className="w-48">
+                            <div className="text-sm text-gray-800 max-w-48 truncate">
+                              {fno.coverageAreas.slice(0, 1).join(", ")}
+                              {fno.coverageAreas.length > 1 && ` + ${fno.coverageAreas.length - 1} more`}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -358,18 +351,16 @@ export default function FNOPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex space-x-2">
-                              <Link to={`/fno/${fno.id}`}>
-                                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
+                            <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600" onClick={() => handleFnoClick(fno)}>
                                   <Settings className="h-4 w-4" />
                                 </Button>
-                              </Link>
                               {fno.integrationType === "api" && (
                                 <>
-                                  <Button variant="ghost" size="sm" onClick={() => handleTestConnection(fno.id)} className="text-gray-800 hover:text-gray-900">
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleTestConnection(fno.id); }} className="text-gray-800 hover:text-gray-900">
                                     Test
                                   </Button>
-                                  <Button variant="ghost" size="sm" onClick={() => handleSyncStatus(fno.id)} className="text-gray-800 hover:text-gray-900">
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleSyncStatus(fno.id); }} className="text-gray-800 hover:text-gray-900">
                                     Sync
                                   </Button>
                                 </>
@@ -404,28 +395,28 @@ export default function FNOPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mockIntegrationLogs.map((log) => (
-                        <TableRow key={log.id}>
+                      {logs.map((log: Record<string, unknown>, index: number) => (
+                        <TableRow key={log.id || log._id || index}>
                           <TableCell>
-                            <div className="text-sm">{new Date(log.timestamp).toLocaleString()}</div>
+                            <div className="text-sm">{(log as any).timestamp ? new Date((log as any).timestamp).toLocaleString() : '-'}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">{log.fnoName}</div>
+                            <div className="font-medium">{(log as any).fnoName ?? '-'}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{log.orderNumber}</div>
+                            <div className="text-sm">{(log as any).orderNumber ?? '-'}</div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{log.action.replace("_", " ")}</Badge>
+                            <Badge variant="outline">{String((log as any).action ?? '').replace("_", " ")}</Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge className={getLogStatusColor(log.status)}>{log.status}</Badge>
+                            <Badge className={getLogStatusColor((log as any).status ?? 'pending')}>{(log as any).status ?? 'pending'}</Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{log.responseTime ? `${log.responseTime}ms` : "N/A"}</div>
+                            <div className="text-sm">{(log as any).responseTime ? `${(log as any).responseTime}ms` : "N/A"}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm text-muted-foreground">{log.details}</div>
+                            <div className="text-sm text-muted-foreground">{(log as any).details ?? '-'}</div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -443,7 +434,7 @@ export default function FNOPage() {
                     <CardDescription>Response times and success rates</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {mockFNOs
+                    {normalizedFNOs
                       .filter((fno) => fno.integrationType === "api")
                       .map((fno) => (
                         <div key={fno.id} className="flex justify-between items-center">
@@ -466,7 +457,7 @@ export default function FNOPage() {
                     <CardDescription>Manual integration statistics</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {mockFNOs
+                    {normalizedFNOs
                       .filter((fno) => fno.integrationType === "manual")
                       .map((fno) => (
                         <div key={fno.id} className="flex justify-between items-center">
@@ -487,6 +478,671 @@ export default function FNOPage() {
           </Tabs>
         </div>
       </main>
+
+      {/* FNO Details Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-2xl font-bold">
+                {selectedFno?.name} ({selectedFno?.code})
+              </DialogTitle>
+              <Button variant="ghost" size="sm" onClick={closeModal}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          
+          {selectedFno && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Basic Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">FNO Name</label>
+                      <p className="text-lg font-semibold">{selectedFno.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Code</label>
+                      <p className="text-lg font-semibold">{selectedFno.code}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Integration Type</label>
+                      <Badge variant="outline" className="capitalize">
+                        {selectedFno.integrationType}
+                      </Badge>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <Badge className={getStatusColor(selectedFno.status)}>
+                        {selectedFno.status}
+                      </Badge>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Active</label>
+                      <p className="text-sm">{selectedFno.isActive ? 'Yes' : 'No'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Orders Submitted</label>
+                      <p className="text-sm font-semibold">{selectedFno.ordersSubmitted}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Success Rate</label>
+                      <p className="text-sm font-semibold">{selectedFno.successRate}%</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Last Sync</label>
+                      <p className="text-sm">{selectedFno.lastSync ? new Date(selectedFno.lastSync).toLocaleString() : 'N/A'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* API Configuration */}
+              {selectedFno.integrationType === 'api' && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Network className="h-5 w-5" />
+                      API Configuration
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">API Endpoint</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded flex-1">
+                          {selectedFno.apiEndpoint || 'Not configured'}
+                        </p>
+                        {selectedFno.apiEndpoint && (
+                          <Button variant="ghost" size="sm" onClick={() => window.open(selectedFno.apiEndpoint, '_blank')}>
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">API Key Status</label>
+                      <p className="text-sm">{selectedFno.apiKey ? 'Configured' : 'Not configured'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Portal Configuration */}
+              {selectedFno.portalUrl && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ExternalLink className="h-5 w-5" />
+                      Portal Configuration
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Portal URL</label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded flex-1">
+                          {selectedFno.portalUrl}
+                        </p>
+                        <Button variant="ghost" size="sm" onClick={() => window.open(selectedFno.portalUrl, '_blank')}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Coverage Areas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Coverage Areas ({selectedFno.coverageAreas?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {selectedFno.coverageAreas?.map((area: string, index: number) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm">{area}</span>
+                      </div>
+                    )) || (
+                      <p className="text-sm text-gray-500">No coverage areas defined</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
+                    {selectedFno.integrationType === 'api' && (
+                      <>
+                        <Button onClick={() => handleTestConnection(selectedFno.id)}>
+                          Test Connection
+                        </Button>
+                        <Button variant="outline" onClick={() => handleSyncStatus(selectedFno.id)}>
+                          Sync Status
+                        </Button>
+                      </>
+                    )}
+                    <Button variant="outline" onClick={closeModal}>
+                      Close
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
+
+// "use client"
+
+// import { useState } from "react"
+// import { Sidebar } from "../../../components/components/layout/sidebar"
+// import { Button } from "../../../components/components/ui/button"
+// import { Input } from "../../../components/components/ui/input"
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
+// import { Badge } from "../../../components/components/ui/badge"
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/components/ui/select"
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
+// import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/components/ui/tabs"
+// import { Search, Settings, Network, Activity, AlertCircle, CheckCircle, Clock } from "lucide-react"
+// import { Link } from "react-router-dom"
+
+// // Mock FNO data
+// const mockFNOs = [
+//   {
+//     id: "1",
+//     name: "Openserve",
+//     code: "OS",
+//     integrationType: "api",
+//     apiEndpoint: "https://api.openserve.co.za",
+//     portalUrl: "https://portal.openserve.co.za",
+//     coverageAreas: ["Western Cape", "Gauteng", "KwaZulu-Natal"],
+//     isActive: true,
+//     lastSync: "2025-01-09T14:30:00Z",
+//     status: "connected",
+//     ordersSubmitted: 145,
+//     successRate: 98.6,
+//   },
+//   {
+//     id: "2",
+//     name: "Vumatel",
+//     code: "VUM",
+//     integrationType: "manual",
+//     portalUrl: "https://portal.vumatel.co.za",
+//     coverageAreas: ["Western Cape", "Gauteng"],
+//     isActive: true,
+//     lastSync: null,
+//     status: "active",
+//     ordersSubmitted: 89,
+//     successRate: 95.5,
+//   },
+//   {
+//     id: "3",
+//     name: "Frogfoot Networks",
+//     code: "FF",
+//     integrationType: "manual",
+//     portalUrl: "https://portal.frogfoot.com",
+//     coverageAreas: ["Western Cape", "Eastern Cape"],
+//     isActive: true,
+//     lastSync: null,
+//     status: "active",
+//     ordersSubmitted: 67,
+//     successRate: 92.5,
+//   },
+//   {
+//     id: "4",
+//     name: "MetroFibre",
+//     code: "MF",
+//     integrationType: "api",
+//     apiEndpoint: "https://api.metrofibre.co.za",
+//     portalUrl: "https://portal.metrofibre.co.za",
+//     coverageAreas: ["Western Cape", "Gauteng", "KwaZulu-Natal"],
+//     isActive: false,
+//     lastSync: "2025-01-08T09:15:00Z",
+//     status: "error",
+//     ordersSubmitted: 23,
+//     successRate: 87.0,
+//   },
+// ]
+
+// const mockIntegrationLogs = [
+//   {
+//     id: "1",
+//     fnoName: "Openserve",
+//     orderNumber: "ORD-2025-001",
+//     action: "submit",
+//     status: "success",
+//     responseTime: 1250,
+//     timestamp: "2025-01-09T14:30:00Z",
+//     details: "Order submitted successfully",
+//   },
+//   {
+//     id: "2",
+//     fnoName: "MetroFibre",
+//     orderNumber: "ORD-2025-002",
+//     action: "status_update",
+//     status: "error",
+//     responseTime: 5000,
+//     timestamp: "2025-01-09T14:25:00Z",
+//     details: "Connection timeout",
+//   },
+//   {
+//     id: "3",
+//     fnoName: "Vumatel",
+//     orderNumber: "ORD-2025-003",
+//     action: "manual_submit",
+//     status: "success",
+//     responseTime: null,
+//     timestamp: "2025-01-09T14:20:00Z",
+//     details: "Manual application completed",
+//   },
+// ]
+
+// const fnoStats = {
+//   totalFNOs: 4,
+//   activeFNOs: 1,
+//   apiIntegrations: 2,
+//   manualIntegrations: 2,
+//   totalOrders: 324,
+//   averageSuccessRate: 93.4,
+// }
+
+// function getStatusColor(status: string) {
+//   switch (status) {
+//     case "connected":
+//       return "bg-green-100 text-green-800"
+//     case "active":
+//       return "bg-blue-100 text-blue-800"
+//     case "error":
+//       return "bg-red-100 text-red-800"
+//     case "disconnected":
+//       return "bg-gray-100 text-gray-800"
+//     default:
+//       return "bg-gray-100 text-gray-800"
+//   }
+// }
+
+// function getStatusIcon(status: string) {
+//   switch (status) {
+//     case "connected":
+//       return <CheckCircle className="h-4 w-4 text-green-600" />
+//     case "active":
+//       return <CheckCircle className="h-4 w-4 text-blue-600" />
+//     case "error":
+//       return <AlertCircle className="h-4 w-4 text-red-600" />
+//     case "disconnected":
+//       return <Clock className="h-4 w-4 text-gray-400" />
+//     default:
+//       return <Clock className="h-4 w-4 text-gray-400" />
+//   }
+// }
+
+// function getLogStatusColor(status: string) {
+//   switch (status) {
+//     case "success":
+//       return "bg-green-100 text-green-800"
+//     case "error":
+//       return "bg-red-100 text-red-800"
+//     case "pending":
+//       return "bg-yellow-100 text-yellow-800"
+//     default:
+//       return "bg-gray-100 text-gray-800"
+//   }
+// }
+
+// export default function FNOPage() {
+//   const [searchTerm, setSearchTerm] = useState("")
+//   const [typeFilter, setTypeFilter] = useState("all")
+//   const [statusFilter, setStatusFilter] = useState("all")
+
+//   const filteredFNOs = mockFNOs.filter((fno) => {
+//     const matchesSearch =
+//       fno.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//       fno.code.toLowerCase().includes(searchTerm.toLowerCase())
+
+//     const matchesType = typeFilter === "all" || fno.integrationType === typeFilter
+//     const matchesStatus = statusFilter === "all" || fno.status === statusFilter
+
+//     return matchesSearch && matchesType && matchesStatus
+//   })
+
+//   const handleTestConnection = (fnoId: string) => {
+//     console.log("[v0] Testing connection for FNO:", fnoId)
+//     // Implementation would test the FNO connection
+//   }
+
+//   const handleSyncStatus = (fnoId: string) => {
+//     console.log("[v0] Syncing status for FNO:", fnoId)
+//     // Implementation would sync order statuses
+//   }
+
+//   return (
+//     <div className="flex h-screen bg-gray-50">
+//       <Sidebar />
+
+//       <main className="flex-1 overflow-auto">
+//         <div className="p-6">
+//           {/* Header */}
+//           <div className="flex items-center justify-between mb-6">
+//             <div>
+//               <h1 className="text-3xl font-bold text-gray-900">FNO Management</h1>
+//               <p className="text-gray-600">Manage Fiber Network Operator integrations and configurations</p>
+//             </div>
+//             <Link to="/fno/create">
+//               <Button className="bg-black text-white hover:bg-gray-800">
+//                 <Plus className="mr-2 h-4 w-4" />
+//                 Add FNO
+//               </Button>
+//             </Link>
+//           </div>
+
+//           {/* Stats Grid */}
+//           <div className="grid grid-cols-4 gap-6 mb-6">
+//             <Card className="bg-white shadow-sm border border-gray-200">
+//               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+//                 <CardTitle className="text-sm font-medium text-gray-700">Total FNOs</CardTitle>
+//                 <Network className="h-4 w-4 text-gray-400" />
+//               </CardHeader>
+//               <CardContent>
+//                 <div className="text-2xl font-bold text-gray-900">{fnoStats.totalFNOs}</div>
+//                 <p className="text-xs text-gray-500">{fnoStats.activeFNOs} active</p>
+//               </CardContent>
+//             </Card>
+
+//             <Card className="bg-white shadow-sm border border-gray-200">
+//               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+//                 <CardTitle className="text-sm font-medium text-gray-700">API Integrations</CardTitle>
+//                 <Activity className="h-4 w-4 text-gray-400" />
+//               </CardHeader>
+//               <CardContent>
+//                 <div className="text-2xl font-bold text-gray-900">{fnoStats.apiIntegrations}</div>
+//                 <p className="text-xs text-gray-500">{fnoStats.manualIntegrations} manual</p>
+//               </CardContent>
+//             </Card>
+
+//             <Card className="bg-white shadow-sm border border-gray-200">
+//               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+//                 <CardTitle className="text-sm font-medium text-gray-700">Orders Processed</CardTitle>
+//                 <Clock className="h-4 w-4 text-gray-400" />
+//               </CardHeader>
+//               <CardContent>
+//                 <div className="text-2xl font-bold text-gray-900">{fnoStats.totalOrders}</div>
+//                 <p className="text-xs text-gray-500">this month</p>
+//               </CardContent>
+//             </Card>
+
+//             <Card className="bg-white shadow-sm border border-gray-200">
+//               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+//                 <CardTitle className="text-sm font-medium text-gray-700">Success Rate</CardTitle>
+//                 <Activity className="h-4 w-4 text-gray-400" />
+//               </CardHeader>
+//               <CardContent>
+//                 <div className="text-2xl font-bold text-gray-900">{fnoStats.averageSuccessRate}%</div>
+//                 <p className="text-xs text-gray-500">average</p>
+//               </CardContent>
+//             </Card>
+//           </div>
+
+//           <Tabs defaultValue="fnos" className="space-y-6">
+//             <TabsList className="bg-white">
+//               <TabsTrigger value="fnos" className="data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900">FNO Configuration</TabsTrigger>
+//               <TabsTrigger value="logs" className="data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900">Integration Logs</TabsTrigger>
+//               <TabsTrigger value="monitoring" className="data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900">Monitoring</TabsTrigger>
+//             </TabsList>
+
+//             <TabsContent value="fnos" className="space-y-6">
+//               {/* Filters */}
+//               <Card className="bg-white shadow-sm border border-gray-200">
+//                 <CardHeader>
+//                   <CardTitle className="text-gray-800">Filters</CardTitle>
+//                   <CardDescription className="text-gray-500">Search and filter FNO configurations</CardDescription>
+//                 </CardHeader>
+//                 <CardContent>
+//                   <div className="flex flex-col md:flex-row gap-4">
+//                     <div className="flex-1">
+//                       <div className="relative">
+//                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+//                         <Input
+//                           placeholder="Search FNOs..."
+//                           value={searchTerm}
+//                           onChange={(e) => setSearchTerm(e.target.value)}
+//                           className="pl-10 bg-white border-gray-200 text-gray-700 placeholder-gray-400"
+//                         />
+//                       </div>
+//                     </div>
+//                     <Select value={typeFilter} onValueChange={setTypeFilter}>
+//                       <SelectTrigger className="w-full md:w-48 bg-white border-gray-200 text-gray-700">
+//                         <SelectValue placeholder="All Types" />
+//                       </SelectTrigger>
+//                       <SelectContent>
+//                         <SelectItem value="all">All Types</SelectItem>
+//                         <SelectItem value="api">API Integration</SelectItem>
+//                         <SelectItem value="manual">Manual Integration</SelectItem>
+//                       </SelectContent>
+//                     </Select>
+//                     <Select value={statusFilter} onValueChange={setStatusFilter}>
+//                       <SelectTrigger className="w-full md:w-48 bg-white border-gray-200 text-gray-700">
+//                         <SelectValue placeholder="All Statuses" />
+//                       </SelectTrigger>
+//                       <SelectContent>
+//                         <SelectItem value="all">All Statuses</SelectItem>
+//                         <SelectItem value="connected">Connected</SelectItem>
+//                         <SelectItem value="active">Active</SelectItem>
+//                         <SelectItem value="error">Error</SelectItem>
+//                         <SelectItem value="disconnected">Disconnected</SelectItem>
+//                       </SelectContent>
+//                     </Select>
+//                   </div>
+//                 </CardContent>
+//               </Card>
+
+//               {/* FNO Table */}
+//               <Card className="bg-white shadow-sm border border-gray-200">
+//                 <CardHeader>
+//                   <CardTitle className="text-gray-800">FNO Configurations ({filteredFNOs.length})</CardTitle>
+//                 </CardHeader>
+//                 <CardContent>
+//                   <Table>
+//                     <TableHeader>
+//                       <TableRow className="border-gray-200">
+//                         <TableHead className="text-gray-700 font-medium">FNO</TableHead>
+//                         <TableHead className="text-gray-700 font-medium">Type</TableHead>
+//                         <TableHead className="text-gray-700 font-medium">Status</TableHead>
+//                         <TableHead className="text-gray-700 font-medium">Coverage Areas</TableHead>
+//                         <TableHead className="text-gray-700 font-medium">Orders</TableHead>
+//                         <TableHead className="text-gray-700 font-medium">Success Rate</TableHead>
+//                         <TableHead className="text-gray-700 font-medium">Last Sync</TableHead>
+//                         <TableHead className="text-gray-700 font-medium">Actions</TableHead>
+//                       </TableRow>
+//                     </TableHeader>
+//                     <TableBody>
+//                       {filteredFNOs.map((fno) => (
+//                         <TableRow key={fno.id} className="border-gray-200">
+//                           <TableCell>
+//                             <div className="flex items-center space-x-2">
+//                               {getStatusIcon(fno.status)}
+//                               <div>
+//                                 <div className="font-bold text-gray-900">{fno.name}</div>
+//                                 <div className="text-sm text-gray-500">{fno.code}</div>
+//                               </div>
+//                             </div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <Badge variant="outline" className="capitalize border-gray-200 text-gray-700 bg-gray-50">
+//                               {fno.integrationType}
+//                             </Badge>
+//                           </TableCell>
+//                           <TableCell>
+//                             <Badge className={getStatusColor(fno.status)}>{fno.status}</Badge>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="text-sm text-gray-800">
+//                               {fno.coverageAreas.slice(0, 2).join(", ")}
+//                               {fno.coverageAreas.length > 2 && ` + ${fno.coverageAreas.length - 2} more`}
+//                             </div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="text-sm font-medium text-gray-900">{fno.ordersSubmitted}</div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="text-sm text-gray-800">{fno.successRate}%</div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="text-sm text-gray-800">
+//                               {fno.lastSync ? new Date(fno.lastSync).toLocaleDateString() : "N/A"}
+//                             </div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="flex space-x-2">
+//                               <Link to={`/fno/${fno.id}`}>
+//                                 <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
+//                                   <Settings className="h-4 w-4" />
+//                                 </Button>
+//                               </Link>
+//                               {fno.integrationType === "api" && (
+//                                 <>
+//                                   <Button variant="ghost" size="sm" onClick={() => handleTestConnection(fno.id)} className="text-gray-800 hover:text-gray-900">
+//                                     Test
+//                                   </Button>
+//                                   <Button variant="ghost" size="sm" onClick={() => handleSyncStatus(fno.id)} className="text-gray-800 hover:text-gray-900">
+//                                     Sync
+//                                   </Button>
+//                                 </>
+//                               )}
+//                             </div>
+//                           </TableCell>
+//                         </TableRow>
+//                       ))}
+//                     </TableBody>
+//                   </Table>
+//                 </CardContent>
+//               </Card>
+//             </TabsContent>
+
+//             <TabsContent value="logs" className="space-y-6">
+//               <Card>
+//                 <CardHeader>
+//                   <CardTitle>Integration Logs</CardTitle>
+//                   <CardDescription>Recent FNO integration activity and API calls</CardDescription>
+//                 </CardHeader>
+//                 <CardContent>
+//                   <Table>
+//                     <TableHeader>
+//                       <TableRow>
+//                         <TableHead>Timestamp</TableHead>
+//                         <TableHead>FNO</TableHead>
+//                         <TableHead>Order</TableHead>
+//                         <TableHead>Action</TableHead>
+//                         <TableHead>Status</TableHead>
+//                         <TableHead>Response Time</TableHead>
+//                         <TableHead>Details</TableHead>
+//                       </TableRow>
+//                     </TableHeader>
+//                     <TableBody>
+//                       {mockIntegrationLogs.map((log) => (
+//                         <TableRow key={log.id}>
+//                           <TableCell>
+//                             <div className="text-sm">{new Date(log.timestamp).toLocaleString()}</div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="font-medium">{log.fnoName}</div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="text-sm">{log.orderNumber}</div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <Badge variant="outline">{log.action.replace("_", " ")}</Badge>
+//                           </TableCell>
+//                           <TableCell>
+//                             <Badge className={getLogStatusColor(log.status)}>{log.status}</Badge>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="text-sm">{log.responseTime ? `${log.responseTime}ms` : "N/A"}</div>
+//                           </TableCell>
+//                           <TableCell>
+//                             <div className="text-sm text-muted-foreground">{log.details}</div>
+//                           </TableCell>
+//                         </TableRow>
+//                       ))}
+//                     </TableBody>
+//                   </Table>
+//                 </CardContent>
+//               </Card>
+//             </TabsContent>
+
+//             <TabsContent value="monitoring">
+//               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+//                 <Card>
+//                   <CardHeader>
+//                     <CardTitle>API Performance</CardTitle>
+//                     <CardDescription>Response times and success rates</CardDescription>
+//                   </CardHeader>
+//                   <CardContent className="space-y-4">
+//                     {mockFNOs
+//                       .filter((fno) => fno.integrationType === "api")
+//                       .map((fno) => (
+//                         <div key={fno.id} className="flex justify-between items-center">
+//                           <div>
+//                             <span className="font-medium">{fno.name}</span>
+//                             <div className="text-sm text-muted-foreground">{fno.status}</div>
+//                           </div>
+//                           <div className="text-right">
+//                             <div className="font-medium">{fno.successRate}%</div>
+//                             <div className="text-sm text-muted-foreground">{fno.ordersSubmitted} orders</div>
+//                           </div>
+//                         </div>
+//                       ))}
+//                   </CardContent>
+//                 </Card>
+
+//                 <Card>
+//                   <CardHeader>
+//                     <CardTitle>Manual Processing</CardTitle>
+//                     <CardDescription>Manual integration statistics</CardDescription>
+//                   </CardHeader>
+//                   <CardContent className="space-y-4">
+//                     {mockFNOs
+//                       .filter((fno) => fno.integrationType === "manual")
+//                       .map((fno) => (
+//                         <div key={fno.id} className="flex justify-between items-center">
+//                           <div>
+//                             <span className="font-medium">{fno.name}</span>
+//                             <div className="text-sm text-muted-foreground">{fno.status}</div>
+//                           </div>
+//                           <div className="text-right">
+//                             <div className="font-medium">{fno.successRate}%</div>
+//                             <div className="text-sm text-muted-foreground">{fno.ordersSubmitted} orders</div>
+//                           </div>
+//                         </div>
+//                       ))}
+//                   </CardContent>
+//                 </Card>
+//               </div>
+//             </TabsContent>
+//           </Tabs>
+//         </div>
+//       </main>
+//     </div>
+//   )
+// }
