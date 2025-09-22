@@ -7,65 +7,11 @@ import { Badge } from "../../../components/components/ui/badge"
 import { Button } from "../../../components/components/ui/button"
 import { Package, Users, AlertTriangle, Clock, Plus } from "lucide-react"
 import { Link } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { getDashboard, getDashboardSummary, getPendingEscalations, getRecentOrders, type DashboardEscalation, type DashboardOrder, type DashboardSummary } from "../../../../lib/api/dashboard"
 
-// Mock data for dashboard
-const dashboardStats = {
-  totalOrders: 1247,
-  activeOrders: 89,
-  pendingEscalations: 12,
-  trialCustomers: 34,
-  todayOrders: 23,
-  completionRate: 94.2,
-}
-
-const recentOrders = [
-  {
-    id: "1",
-    orderNumber: "ORD-2025-001",
-    customer: "John Smith",
-    serviceType: "Fiber",
-    status: "in_progress",
-    priority: "high",
-    createdAt: "2025-01-09T10:30:00Z",
-  },
-  {
-    id: "2",
-    orderNumber: "ORD-2025-002",
-    customer: "Sarah Johnson",
-    serviceType: "Wireless",
-    status: "fno_submitted",
-    priority: "normal",
-    createdAt: "2025-01-09T09:15:00Z",
-  },
-  {
-    id: "3",
-    orderNumber: "ORD-2025-003",
-    customer: "Mike Davis",
-    serviceType: "Fiber",
-    status: "installation_scheduled",
-    priority: "urgent",
-    createdAt: "2025-01-09T08:45:00Z",
-  },
-]
-
-const pendingEscalations = [
-  {
-    id: "1",
-    orderNumber: "ORD-2025-001",
-    customer: "John Smith",
-    reason: "Installation delayed beyond SLA",
-    level: 2,
-    agingHours: 6,
-  },
-  {
-    id: "2",
-    orderNumber: "ORD-2024-998",
-    customer: "Emma Wilson",
-    reason: "FNO not responding to queries",
-    level: 1,
-    agingHours: 3,
-  },
-]
+// Live state
+const initialSummary: DashboardSummary = { totalOrders: 0, activeOrders: 0, escalations: 0, trialCustomers: 0, ordersToday: 0 }
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -90,6 +36,8 @@ function getPriorityColor(priority: string) {
       return "bg-red-100 text-red-800"
     case "high":
       return "bg-orange-100 text-orange-800"
+    case "medium":
+      return "bg-yellow-100 text-yellow-800"
     case "normal":
       return "bg-blue-100 text-blue-800"
     case "low":
@@ -101,6 +49,38 @@ function getPriorityColor(priority: string) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [summary, setSummary] = useState<DashboardSummary>(initialSummary)
+  const [orders, setOrders] = useState<DashboardOrder[]>([])
+  const [escalations, setEscalations] = useState<DashboardEscalation[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const combined = await getDashboard()
+        if (!mounted) return
+        setSummary(combined.summary)
+        setOrders(combined.recentOrders)
+        setEscalations(combined.pendingEscalations)
+      } catch (e: any) {
+        if (!mounted) return
+        // Avoid cascading 404s: only use the combined endpoint for now
+        const status = e?.response?.status
+        if (status === 404) {
+          setError('Dashboard API is not available on the server (404).')
+        } else {
+          setError((e as Error)?.message || 'Failed to load dashboard')
+        }
+      } finally {
+        if (mounted) setIsLoading(false)
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
   
   return (
     <div className="flex h-screen bg-background">
@@ -113,7 +93,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, {user?.firstName}! Here's what's happening today.</p>
+              <p className="text-muted-foreground">Welcome back! Here's what's happening today.</p>
             </div>
             <Link to="/orders/create">
               <Button>
@@ -131,8 +111,8 @@ export default function DashboardPage() {
                 <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.totalOrders}</div>
-                <p className="text-xs text-muted-foreground">+{dashboardStats.todayOrders} today</p>
+                <div className="text-2xl font-bold">{isLoading ? '—' : summary.totalOrders}</div>
+                <p className="text-xs text-muted-foreground">+{isLoading ? '—' : summary.ordersToday} today</p>
               </CardContent>
             </Card>
 
@@ -142,7 +122,7 @@ export default function DashboardPage() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.activeOrders}</div>
+                <div className="text-2xl font-bold">{isLoading ? '—' : summary.activeOrders}</div>
                 <p className="text-xs text-muted-foreground">In progress</p>
               </CardContent>
             </Card>
@@ -153,7 +133,7 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.pendingEscalations}</div>
+                <div className="text-2xl font-bold">{isLoading ? '—' : summary.escalations}</div>
                 <p className="text-xs text-muted-foreground">Pending resolution</p>
               </CardContent>
             </Card>
@@ -164,7 +144,7 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{dashboardStats.trialCustomers}</div>
+                <div className="text-2xl font-bold">{isLoading ? '—' : summary.trialCustomers}</div>
                 <p className="text-xs text-muted-foreground">Active trials</p>
               </CardContent>
             </Card>
@@ -178,20 +158,26 @@ export default function DashboardPage() {
                 <CardDescription>Latest orders in the system</CardDescription>
               </CardHeader>
               <CardContent>
+                {error && (
+                  <div className="text-sm text-red-600 mb-3">{error}</div>
+                )}
                 <div className="space-y-4">
-                  {recentOrders.map((order) => (
+                  {(isLoading ? [] : orders).map((order) => (
                     <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
                           <span className="font-medium">{order.orderNumber}</span>
-                          <Badge className={getPriorityColor(order.priority)}>{order.priority}</Badge>
+                          <Badge className={getPriorityColor(String(order.priority))}>{String(order.priority)}</Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">{order.customer}</p>
+                        <p className="text-sm text-muted-foreground">{order.customerName || (order as any).customer}</p>
                         <p className="text-xs text-muted-foreground">{order.serviceType}</p>
                       </div>
-                      <Badge className={getStatusColor(order.status)}>{order.status.replace("_", " ")}</Badge>
+                      <Badge className={getStatusColor(order.status)}>{order.status.replace(/_/g, " ")}</Badge>
                     </div>
                   ))}
+                  {!isLoading && orders.length === 0 && (
+                    <div className="text-sm text-muted-foreground">No recent orders</div>
+                  )}
                 </div>
                 <div className="mt-4">
                   <Link to="/orders">
@@ -211,17 +197,20 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {pendingEscalations.map((escalation) => (
+                  {(isLoading ? [] : escalations).map((escalation) => (
                     <div key={escalation.id} className="p-3 border rounded-lg border-orange-200 bg-orange-50">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{escalation.orderNumber}</span>
-                        <Badge variant="destructive">Level {escalation.level}</Badge>
+                        <Badge variant="destructive">Level {String(escalation.level)}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">{escalation.customer}</p>
-                      <p className="text-sm">{escalation.reason}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Aging: {escalation.agingHours} hours</p>
+                      <p className="text-sm text-muted-foreground mb-1">{escalation.customerName || (escalation as any).customer}</p>
+                      <p className="text-sm">{escalation.issue || (escalation as any).reason}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Aging: {escalation.aging || `${escalation.agingHours ?? 0} hours`}</p>
                     </div>
                   ))}
+                  {!isLoading && escalations.length === 0 && (
+                    <div className="text-sm text-muted-foreground">No pending escalations</div>
+                  )}
                 </div>
                 <div className="mt-4">
                   <Link to="/escalations">
