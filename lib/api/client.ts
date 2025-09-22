@@ -1,12 +1,17 @@
 import axios, { AxiosInstance } from 'axios';
 
 // Resolve API base URL from Vite env with sane defaults
-const apiBaseUrl = 'https://oms-server-ntlv.onrender.com';
+
+const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL
+  || (typeof window !== 'undefined' ? window.__OMS_API_BASE_URL__ : undefined)
+  || 'https://oms-server-ntlv.onrender.com';
+
 
 // Create a shared axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: apiBaseUrl.replace(/\/+$/g, ''),
   timeout: 15000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }

@@ -1,0 +1,1021 @@
+{
+  "info": {
+    "name": "OMS PRD Compliance Testing",
+    "description": "Complete testing collection for PRD-compliant order-to-onboarding workflow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3003",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "fnoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "onboardingId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"email\",\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', response.accessToken);",
+                  "    console.log('Access token set:', response.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Customer Management",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+27-82-123-4567\",\n  \"address\": {\n    \"street\": \"123 Test Street\",\n    \"city\": \"Cape Town\",\n    \"state\": \"Western Cape\",\n    \"postalCode\": \"8001\",\n    \"country\": \"South Africa\"\n  },\n  \"customerType\": \"business\",\n  \"isTrial\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('customerId', response.id || response.data.id);",
+                  "    console.log('Customer ID set:', response.id || response.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Order Workflow (PRD Compliant)",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"orderType\": \"new_install\",\n  \"priority\": \"medium\",\n  \"serviceAddress\": {\n    \"street\": \"123 Test Street\",\n    \"city\": \"Cape Town\",\n    \"province\": \"Western Cape\",\n    \"postalCode\": \"8001\",\n    \"country\": \"South Africa\"\n  },\n  \"serviceDetails\": {\n    \"serviceType\": \"internet\",\n    \"bandwidth\": \"100/100\",\n    \"installationType\": \"professional_install\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('orderId', response.id || response.data.id);",
+                  "    console.log('Order ID set:', response.id || response.data.id);",
+                  "    pm.test('Order created with status: created', () => {",
+                  "        pm.expect(response.status || response.data.status).to.eql('created');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validate Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"validated\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order validated successfully', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status || response.data.status).to.eql('validated');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enrich Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceDetails\": {\n    \"networkParams\": {\n      \"vlan\": 123,\n      \"port\": \"GigabitEthernet0/1\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            }
+          }
+        },
+        {
+          "name": "Set Order as Enriched",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"enriched\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order enriched successfully', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status || response.data.status).to.eql('enriched');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get FNOs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/fnos",
+              "host": ["{{baseUrl}}"],
+              "path": ["fnos"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.length > 0) {",
+                  "        pm.collectionVariables.set('fnoId', response.data[0].id);",
+                  "        console.log('FNO ID set:', response.data[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set FNO on Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fnoId\": \"{{fnoId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            }
+          }
+        },
+        {
+          "name": "Submit to FNO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"fno_submitted\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order submitted to FNO successfully', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status || response.data.status).to.eql('fno_submitted');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FNO Accepts Order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"fno_accepted\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('FNO accepted order successfully', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status || response.data.status).to.eql('fno_accepted');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Schedule Installation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"installation_scheduled\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Installation scheduled successfully', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status || response.data.status).to.eql('installation_scheduled');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Onboarding Initiation",
+      "item": [
+        {
+          "name": "Initiate Onboarding",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"orderId\": \"{{orderId}}\",\n  \"onboardingType\": \"standard\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/initiate",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "initiate"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('onboardingId', response.onboardingId || response.data.onboardingId);",
+                  "    console.log('Onboarding ID set:', response.onboardingId || response.data.onboardingId);",
+                  "    pm.test('Onboarding initiated successfully', () => {",
+                  "        pm.expect(response.onboardingId || response.data.onboardingId).to.be.a('string');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Onboarding Workflow (PRD 10-Step Process)",
+      "item": [
+        {
+          "name": "Step 1: Welcome Sent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Welcome email sent successfully\",\n  \"metadata\": {\n    \"emailTemplate\": \"welcome_email\",\n    \"sentAt\": \"2025-01-09T10:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/welcome_sent/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "welcome_sent", "complete"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Welcome email step completed', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Step 2: Service Setup",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Service configuration completed\",\n  \"metadata\": {\n    \"serviceType\": \"fiber\",\n    \"bandwidth\": \"100Mbps\",\n    \"configuredAt\": \"2025-01-09T11:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/service_setup/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "service_setup", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 3: Equipment Ordered",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Equipment ordered from supplier\",\n  \"metadata\": {\n    \"supplier\": \"TechCorp\",\n    \"orderNumber\": \"EQ-2025-001\",\n    \"orderedAt\": \"2025-01-09T12:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/equipment_ordered/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "equipment_ordered", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 4: Equipment Shipped",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Equipment shipped to customer\",\n  \"metadata\": {\n    \"trackingNumber\": \"TRK-123456789\",\n    \"shippedAt\": \"2025-01-09T14:00:00Z\",\n    \"estimatedDelivery\": \"2025-01-11T00:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/equipment_shipped/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "equipment_shipped", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 5: Installation Scheduled",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Installation appointment scheduled\",\n  \"metadata\": {\n    \"appointmentDate\": \"2025-01-12T09:00:00Z\",\n    \"technician\": \"Mike Johnson\",\n    \"scheduledAt\": \"2025-01-09T16:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/installation_scheduled/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "installation_scheduled", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 6: Installation Completed",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Installation completed successfully\",\n  \"metadata\": {\n    \"completedAt\": \"2025-01-12T11:30:00Z\",\n    \"technician\": \"Mike Johnson\",\n    \"signalStrength\": \"excellent\",\n    \"testResults\": \"passed\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/installation_completed/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "installation_completed", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 7: Service Activated",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Service activated and tested\",\n  \"metadata\": {\n    \"activatedAt\": \"2025-01-12T12:00:00Z\",\n    \"speedTest\": \"98Mbps\",\n    \"latency\": \"12ms\",\n    \"customerNotified\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/service_activated/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "service_activated", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 8: Follow-up",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Follow-up call completed\",\n  \"metadata\": {\n    \"followUpDate\": \"2025-01-15T10:00:00Z\",\n    \"customerSatisfaction\": \"excellent\",\n    \"issues\": \"none\",\n    \"nextCheck\": \"2025-01-22T00:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/follow_up/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "follow_up", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Step 9: Completed",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Onboarding process completed successfully\",\n  \"metadata\": {\n    \"completedAt\": \"2025-01-15T10:30:00Z\",\n    \"totalDuration\": \"6 days\",\n    \"customerSatisfaction\": \"excellent\",\n    \"nextAction\": \"regular_monitoring\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/completed/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "completed", "complete"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Onboarding completed successfully', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Verification & Testing",
+      "item": [
+        {
+          "name": "Get Workflow State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/workflow/state",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "workflow", "state"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Workflow state retrieved', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data.current).to.eql('completed');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Workflow History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/workflow/history",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "workflow", "history"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Workflow history retrieved', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.history).to.be.an('array');",
+                  "    pm.expect(response.history.length).to.be.greaterThan(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Onboarding Steps",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/steps",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "steps"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Onboarding steps retrieved', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "    pm.expect(response.data.length).to.eql(10);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get SLA Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "metrics"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('SLA metrics retrieved', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('totalOnboardings');",
+                  "    pm.expect(response.data).to.have.property('slaStatuses');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Error Testing",
+      "item": [
+        {
+          "name": "Test Invalid Transition",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"This should fail\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/step/invalid_step/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "step", "invalid_step", "complete"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invalid transition returns 400', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Test Non-existent Onboarding",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/invalid-id/workflow/state",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "invalid-id", "workflow", "state"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Non-existent onboarding returns 404', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Email Testing",
+      "item": [
+        {
+          "name": "Send Welcome Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"john.doe@example.com\",\n  \"template\": \"welcome_email\",\n  \"context\": {\n    \"customerName\": \"John Doe\",\n    \"serviceType\": \"Fiber Internet\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "notify"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Welcome email sent successfully', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Installation Scheduled Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"to\": \"john.doe@example.com\",\n  \"template\": \"onboarding_installation_scheduled\",\n  \"context\": {\n    \"customerName\": \"John Doe\",\n    \"appointmentDate\": \"2025-01-12T09:00:00Z\",\n    \"technician\": \"Mike Johnson\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/onboarding/{{onboardingId}}/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["onboarding", "{{onboardingId}}", "notify"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
