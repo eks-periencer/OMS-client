@@ -7,7 +7,7 @@ import { Button } from '../ui/button'
 import { Loader2, Send } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { useOrders } from '../../../../hooks/useOrders'
-import { listFNOs, submitOrderToFNO, type FNOItem } from '../../../../lib/api/fno'
+import { listFNOs, submitOrderToFNO, type FNOItem } from '../../../../lib/api/FNO.ts'
 
 interface OrderFnoSubmissionFormProps {
   order: any
