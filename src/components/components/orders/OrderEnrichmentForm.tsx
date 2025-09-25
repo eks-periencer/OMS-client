@@ -22,38 +22,61 @@ export function OrderEnrichmentForm({ order, onUpdate }: OrderEnrichmentFormProp
 
   // Form state
   const [serviceDetails, setServiceDetails] = useState({
-    serviceType: order.serviceDetails?.serviceType || '',
-    bandwidth: order.serviceDetails?.bandwidth || '',
-    installationType: order.serviceDetails?.installationType || 'standard',
-    networkType: order.serviceDetails?.networkType || '',
-    equipment: order.serviceDetails?.equipment || '',
-    specialRequirements: order.serviceDetails?.specialRequirements || ''
+    serviceType: order.serviceDetails?.serviceType || order.service_details?.service_type || order.orderType || order.order_type || '',
+    bandwidth: order.serviceDetails?.bandwidth || order.service_details?.bandwidth || order.planBandwidth || order.plan_bandwidth || '',
+    installationType: order.serviceDetails?.installationType || order.service_details?.installation_type || 'standard',
+    networkType: order.serviceDetails?.networkType || order.service_details?.network_type || '',
+    equipment: order.serviceDetails?.equipment || order.service_details?.equipment || '',
+    specialRequirements: order.serviceDetails?.specialRequirements || order.service_details?.special_requirements || ''
   })
 
   const [technicalSpecs, setTechnicalSpecs] = useState({
-    ipType: order.technicalSpecs?.ipType || 'dynamic',
-    vlanId: order.technicalSpecs?.vlanId || '',
-    portSpeed: order.technicalSpecs?.portSpeed || '',
-    routingProtocol: order.technicalSpecs?.routingProtocol || 'static',
-    qosSettings: order.technicalSpecs?.qosSettings || '',
-    securityRequirements: order.technicalSpecs?.securityRequirements || ''
+    ipType: order.technicalSpecs?.ipType || order.technical_specs?.ip_type || 'dynamic',
+    vlanId: order.technicalSpecs?.vlanId || order.technical_specs?.vlan_id || '',
+    portSpeed: order.technicalSpecs?.portSpeed || order.technical_specs?.port_speed || '',
+    routingProtocol: order.technicalSpecs?.routingProtocol || order.technical_specs?.routing_protocol || 'static',
+    qosSettings: order.technicalSpecs?.qosSettings || order.technical_specs?.qos_settings || '',
+    securityRequirements: order.technicalSpecs?.securityRequirements || order.technical_specs?.security_requirements || ''
   })
 
   const [installationDetails, setInstallationDetails] = useState({
-    preferredDate: order.installationDetails?.preferredDate || '',
-    timeSlot: order.installationDetails?.timeSlot || 'morning',
-    accessInstructions: order.installationDetails?.accessInstructions || '',
-    contactPerson: order.installationDetails?.contactPerson || '',
-    contactPhone: order.installationDetails?.contactPhone || '',
-    specialInstructions: order.installationDetails?.specialInstructions || ''
+    preferredDate: order.installationDetails?.preferredDate || order.installation_details?.preferred_date || order.requestedInstallDate || order.requested_install_date || '',
+    timeSlot: order.installationDetails?.timeSlot || order.installation_details?.time_slot || 'morning',
+    accessInstructions: order.installationDetails?.accessInstructions || order.installation_details?.access_instructions || order.installationAddress?.access_instructions || order.installation_address?.access_instructions || '',
+    contactPerson: order.installationDetails?.contactPerson || order.installation_details?.contact_person || (order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : ''),
+    contactPhone: order.installationDetails?.contactPhone || order.installation_details?.contact_phone || order.customer?.phone || '',
+    specialInstructions: order.installationDetails?.specialInstructions || order.installation_details?.special_instructions || ''
   })
 
   const [fnoDetails, setFnoDetails] = useState({
-    fnoId: order.fnoId || '',
-    fnoReference: order.fnoReference || '',
-    fnoContact: order.fnoDetails?.fnoContact || '',
-    fnoNotes: order.fnoDetails?.fnoNotes || ''
+    fnoId: order.fnoId || order.fno_id || '',
+    fnoReference: order.fnoReference || order.fno_reference || '',
+    fnoContact: order.fnoDetails?.fnoContact || order.fno_details?.fno_contact || '',
+    fnoNotes: order.fnoDetails?.fnoNotes || order.fno_details?.fno_notes || ''
   })
+
+  // Auto-fill from order when order prop changes; only fill empty fields to avoid overriding user input
+  useEffect(() => {
+    setServiceDetails(prev => ({
+      ...prev,
+      serviceType: prev.serviceType || order.serviceDetails?.serviceType || order.service_details?.service_type || order.orderType || order.order_type || '',
+      bandwidth: prev.bandwidth || order.serviceDetails?.bandwidth || order.service_details?.bandwidth || order.planBandwidth || order.plan_bandwidth || ''
+    }))
+
+    setInstallationDetails(prev => ({
+      ...prev,
+      preferredDate: prev.preferredDate || order.installationDetails?.preferredDate || order.installation_details?.preferred_date || order.requestedInstallDate || order.requested_install_date || '',
+      contactPerson: prev.contactPerson || order.installationDetails?.contactPerson || order.installation_details?.contact_person || (order.customer ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() : ''),
+      contactPhone: prev.contactPhone || order.installationDetails?.contactPhone || order.installation_details?.contact_phone || order.customer?.phone || '',
+      accessInstructions: prev.accessInstructions || order.installationDetails?.accessInstructions || order.installation_details?.access_instructions || order.installationAddress?.access_instructions || order.installation_address?.access_instructions || ''
+    }))
+
+    setFnoDetails(prev => ({
+      ...prev,
+      fnoId: prev.fnoId || order.fnoId || order.fno_id || '',
+      fnoReference: prev.fnoReference || order.fnoReference || order.fno_reference || ''
+    }))
+  }, [order])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,12 +100,12 @@ export function OrderEnrichmentForm({ order, onUpdate }: OrderEnrichmentFormProp
         ...(fnoDetails.fnoReference && { fnoReference: fnoDetails.fnoReference })
       }
 
-      await updateOrder(order.id, enrichmentData)
+      const updated = await updateOrder(order.id, enrichmentData)
 
       await Swal.fire({
         icon: 'success',
         title: 'Order Enriched!',
-        text: 'Order has been successfully enriched with additional data.',
+        text: 'Order has been successfully enriched with additional data and moved to Enriched.',
         timer: 2000,
         showConfirmButton: false
       })

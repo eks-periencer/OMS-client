@@ -35,7 +35,7 @@ export function OrderWorkflowManager({ order, onUpdate }: OrderWorkflowManagerPr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const currentState = order.currentState || order.status
+  const currentState = (order?.current_state || order?.currentState || order?.status || 'created') as string
   const currentStateIndex = workflowStates.findIndex(state => state.key === currentState)
 
   useEffect(() => {
@@ -51,7 +51,17 @@ export function OrderWorkflowManager({ order, onUpdate }: OrderWorkflowManagerPr
           getOrderWorkflowHistory(order.id)
         ])
         
-        setWorkflowState(state)
+        // Normalize workflow state payload to component shape
+        const normalizedState = state && typeof state === 'object' ? {
+          state: state.state || currentState,
+          description: state.description || '',
+          validTransitions: (state.transitions || state.validTransitions || []).map((t: any) => ({
+            toState: t.toState || t.to_state || t.to || 'unknown',
+            name: t.name || t.transition_name || t.displayName || undefined
+          }))
+        } : null
+
+        setWorkflowState(normalizedState)
         setWorkflowHistory(history || [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load workflow data')

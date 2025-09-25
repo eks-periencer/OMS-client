@@ -1,3 +1,30 @@
+import api from './client'
+
+export type FNOItem = {
+  id: string
+  name: string
+  code: string
+  integration_type: 'api' | 'manual'
+  portal_url?: string
+}
+
+export async function listFNOs(): Promise<FNOItem[]> {
+  const { data } = await api.get('/fno', { params: { page: 1, limit: 100 } })
+  const raw = (data?.data?.fnos || data?.data || data?.items || []) as any[]
+  return raw.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    code: r.code,
+    integration_type: r.integration_type,
+    portal_url: r.portal_url
+  }))
+}
+
+export async function submitOrderToFNO(fnoId: string, orderId: string, submissionType: 'api' | 'manual') {
+  const { data } = await api.post(`/fno/${fnoId}/submit-order`, { orderId, submissionType })
+  return data?.data || data
+}
+
 import { apiClient, unwrap } from './client'
 
 // Types are minimal; extend as backend stabilizes

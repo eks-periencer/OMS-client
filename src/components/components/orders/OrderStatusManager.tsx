@@ -66,8 +66,13 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
   const [workflowState, setWorkflowState] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const currentState = order.currentState || order.status
-  const validTransitions = statusTransitions[currentState] || []
+  const currentState = (order?.current_state || order?.currentState || order?.status || 'created') as string
+  const validTransitionsFromWorkflow = (workflowState?.transitions || []).map((t: any) => t.toState)
+  const baseTransitions = (validTransitionsFromWorkflow.length > 0
+    ? validTransitionsFromWorkflow
+    : (statusTransitions[currentState] || []))
+  // Business rule: prevent selecting 'enriched' here; enrichment must be done via Enrichment tab
+  const validTransitions = baseTransitions.filter((s: string) => s !== 'enriched')
 
   useEffect(() => {
     const loadWorkflowState = async () => {
@@ -151,13 +156,13 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
           <div className="p-3 bg-blue-50 rounded-lg">
             <p className="text-sm font-medium text-blue-800">Workflow State</p>
             <p className="text-sm text-blue-600">
-              {workflowState.currentState} - {workflowState.description || 'No description available'}
+              {workflowState.state} {workflowState.description ? `- ${workflowState.description}` : ''}
             </p>
-            {workflowState.validTransitions && workflowState.validTransitions.length > 0 && (
+            {Array.isArray(workflowState.transitions) && workflowState.transitions.length > 0 && (
               <div className="mt-2">
                 <p className="text-xs font-medium text-blue-700">Valid Transitions:</p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {workflowState.validTransitions.map((transition: any) => (
+                  {workflowState.transitions.map((transition: any) => (
                     <Badge key={transition.toState} variant="secondary" className="text-xs">
                       {statusLabels[transition.toState] || transition.toState}
                     </Badge>

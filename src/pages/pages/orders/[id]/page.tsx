@@ -9,10 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components
 import { ArrowLeft, Edit, Clock, MapPin, User, Package, Network, AlertTriangle, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useOrders } from "../../../../../hooks/useOrders"
+import { getCustomer } from "../../../../../lib/api/customers"
 import { OrderStatusManager } from "../../../../components/components/orders/OrderStatusManager"
 import { OrderWorkflowManager } from "../../../../components/components/orders/OrderWorkflowManager"
 import { OrderSlaMonitor } from "../../../../components/components/orders/OrderSlaMonitor"
 import { OrderEnrichmentForm } from "../../../../components/components/orders/OrderEnrichmentForm"
+import { OrderFnoSubmissionForm } from "../../../../components/components/orders/OrderFnoSubmissionForm"
 import Swal from "sweetalert2"
 
 function getStatusColor(status: string) {
@@ -74,11 +76,21 @@ export default function OrderDetailsPage() {
     if (!id) return
     
     try {
-      const [orderData, historyData] = await Promise.all([
+      const [orderDataRaw, historyData] = await Promise.all([
         getOrder(id),
         getOrderWorkflowHistory(id)
       ])
       
+      let orderData = orderDataRaw
+      const hasName = !!(orderData?.customer?.first_name || orderData?.customer?.firstName || orderData?.customer?.last_name || orderData?.customer?.lastName)
+      if ((!orderData?.customer || !hasName) && orderData?.customer_id) {
+        try {
+          const customer = await getCustomer(orderData.customer_id)
+          orderData = { ...orderData, customer }
+        } catch (_) {
+          // ignore; leave customer unknown
+        }
+      }
       setOrder(orderData)
       setWorkflowHistory(historyData || [])
     } catch (err) {
@@ -171,7 +183,7 @@ export default function OrderDetailsPage() {
           </div>
 
           {/* Status Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))] gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
@@ -226,7 +238,8 @@ export default function OrderDetailsPage() {
               <TabsTrigger value="details">Order Details</TabsTrigger>
               <TabsTrigger value="history">State History</TabsTrigger>
               <TabsTrigger value="workflow">Workflow</TabsTrigger>
-              <TabsTrigger value="enrichment">Enrichment</TabsTrigger>
+              <TabsTrigger value="enrichment" disabled={order.current_state !== 'validated'}>Enrichment</TabsTrigger>
+              <TabsTrigger value="fno" disabled={order.current_state !== 'enriched'}>FNO Submission</TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="space-y-6">
@@ -241,12 +254,24 @@ export default function OrderDetailsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Customer ID</p>
-                      <p className="text-sm">{order.customer_id}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Customer</p>
+                      <p className="text-sm">
+                        {order?.customer?.first_name || order?.customer?.firstName || order?.customer?.name
+                          ? `${order?.customer?.first_name || order?.customer?.firstName || ''}${order?.customer?.last_name || order?.customer?.lastName ? ` ${order?.customer?.last_name || order?.customer?.lastName}` : ''}`.trim()
+                          : 'Unknown Customer'}
+                      </p>
+                      {order.customer_id && (
+                        <p className="text-xs text-muted-foreground mt-1">ID: {order.customer_id}</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Order Type</p>
-                      <p className="text-sm">{order.order_type || "N/A"}</p>
+                      <p className="text-sm">
+                        {order.order_type === 'new_install' ? 'New Installation'
+                          : order.order_type === 'service_change' ? 'Service Change'
+                          : order.order_type === 'disconnect' ? 'Disconnect'
+                          : (order.order_type || 'N/A')}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -377,6 +402,10 @@ export default function OrderDetailsPage() {
 
             <TabsContent value="enrichment">
               <OrderEnrichmentForm order={order} onUpdate={refreshOrder} />
+            </TabsContent>
+
+            <TabsContent value="fno">
+              <OrderFnoSubmissionForm order={order} onUpdate={refreshOrder} />
             </TabsContent>
           </Tabs>
         </div>
