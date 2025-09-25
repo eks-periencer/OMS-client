@@ -11,8 +11,10 @@ import { Textarea } from "../../../../components/components/ui/textarea"
 import { Label } from "../../../../components/components/ui/label"
 import { ArrowLeft, CheckCircle, Clock, User, MessageSquare, Play } from "lucide-react"
 import { Link } from "react-router-dom"
-import { getOnboarding, updateOnboardingStep, getOnboardingSteps, getOnboardingTransitions } from "../../../../../lib/api/onboarding"
-import { toast } from "sonner"
+import { getOnboarding, getOnboardingSteps } from "../../../../../lib/api/onboarding"
+import { getCustomer } from "../../../../../lib/api/customers"
+import { useOrders } from "../../../../../hooks/useOrders"
+// import { toast } from "sonner"
 
 // Mock onboarding details
 const mockOnboardingDetails = {
@@ -137,7 +139,10 @@ export default function OnboardingDetailsPage() {
   const [, setError] = useState<string | null>(null)
   const [data, setData] = useState<any | null>(null)
   const [steps, setSteps] = useState<any[]>([])
-  const [transitionLoading, setTransitionLoading] = useState<boolean>(false)
+  // Manual transitions disabled; retain minimal state if needed later
+  const { items: orderItems } = useOrders()
+  const [customerDetails, setCustomerDetails] = useState<any | null>(null)
+  // Progress-only view, terminal detection not used
 
   function normalizeSteps(inputSteps: any[], rawCurrent: string | undefined): any[] {
     const currentValue = (rawCurrent || 'initiated').toString()
@@ -166,7 +171,13 @@ export default function OnboardingDetailsPage() {
       activation: 'service_activated',
       rep_contact_scheduled: 'service_setup', // Map old backend state to new flow
       install_scheduled: 'installation_scheduled',
-      install_completed: 'installation_completed'
+      install_completed: 'installation_completed',
+      // PRD: treat 'initiated' as 'welcome_sent' in the visual steps flow
+      initiated: 'welcome_sent',
+      requirements_confirmed: 'service_configuration',
+      provisioning_requested: 'equipment_ordered',
+      provisioning_in_flight: 'equipment_shipped',
+      installation_complete: 'installation_completed'
     }
     
     let currentIndex = ids.indexOf(currentValue)
@@ -192,6 +203,14 @@ export default function OnboardingDetailsPage() {
         setError(null)
         const d = await getOnboarding(onboardingId)
         setData(d)
+        // Fetch authoritative customer details using customerId from onboarding
+        try {
+          const custId = (d as any)?.customer_id || (d as any)?.customerId || (d as any)?.customer?.id
+          if (custId) {
+            const cust = await getCustomer(String(custId))
+            setCustomerDetails(cust)
+          }
+        } catch {}
         try {
           // Fetch steps and reconcile with current state from DB row
           const s = await getOnboardingSteps(onboardingId)
@@ -206,61 +225,7 @@ export default function OnboardingDetailsPage() {
     if (onboardingId) void run()
   }, [onboardingId])
 
-  const handleCompleteStep = async (_clickedStepId: string) => {
-    try {
-      setTransitionLoading(true)
-      // Prefer backend-provided transitions
-      let nextState: string | null = null
-      try {
-        const transitions = await getOnboardingTransitions(onboardingId)
-        // Choose the first transition's toState
-        nextState = transitions?.[0]?.toState || null
-      } catch {}
-
-      // Fallback: derive from steps list ordering
-      if (!nextState) {
-        const source = (steps && steps.length > 0) ? steps : (data?.steps || [])
-        const currentIdx = source.findIndex((s: any) => s.status === 'in_progress')
-        if (currentIdx >= 0 && currentIdx + 1 < source.length) {
-          nextState = source[currentIdx + 1].id
-        }
-      }
-
-      if (!nextState) {
-        throw new Error('No valid transition available from current state')
-      }
-
-      await updateOnboardingStep(onboardingId, nextState, {})
-      const d = await getOnboarding(onboardingId)
-      setData(d)
-      try {
-        const s = await getOnboardingSteps(onboardingId)
-        setSteps(normalizeSteps(s, (d as any)?.current_step))
-      } catch {}
-      try {
-        const mod: any = (await import(/* @vite-ignore */ 'sweetalert2').catch(() => null)) as any
-        if (mod && mod.default) {
-          await mod.default.fire({ icon: 'success', title: 'Step updated', text: `Transitioned to ${nextState}` })
-        } else {
-          toast.success(`Transitioned to ${nextState}`)
-        }
-      } catch { toast.success(`Transitioned to ${nextState}`) }
-    } catch (e) {
-      console.error(e)
-      const msg = (e as any)?.response?.data?.error?.message || (e as any)?.message || 'Failed to complete step'
-      setError(msg)
-      try {
-        const mod: any = (await import(/* @vite-ignore */ 'sweetalert2').catch(() => null)) as any
-        if (mod && mod.default) {
-          await mod.default.fire({ icon: 'error', title: 'Update failed', text: msg })
-        } else {
-          toast.error(msg)
-        }
-      } catch { toast.error(msg) }
-    } finally {
-      setTransitionLoading(false)
-    }
-  }
+  // Manual step progression removed; steps are derived from backend + order sync
 
   const handleAddNote = () => {
     if (newNote.trim()) {
@@ -269,6 +234,52 @@ export default function OnboardingDetailsPage() {
       // Implementation would add the note
     }
   }
+
+  const onboardingCustomerId = (data as any)?.customer_id || (data as any)?.customerId || (data as any)?.customer?.id || null
+  // Prefer onboarding-linked order; else fall back to latest order for the onboarding's customer
+  let relatedOrderId = (data as any)?.order_id || (data as any)?.orderId || (data as any)?.order?.id || null
+  if (!relatedOrderId && onboardingCustomerId && Array.isArray(orderItems)) {
+    const candidates = orderItems.filter((o: any) => {
+      const cid = o?.customer_id ?? o?.customerId
+      return cid && String(cid) === String(onboardingCustomerId)
+    })
+    if (candidates.length > 0) {
+      candidates.sort((a: any, b: any) => new Date(b?.created_at ?? b?.createdAt ?? 0).getTime() - new Date(a?.created_at ?? a?.createdAt ?? 0).getTime())
+      relatedOrderId = candidates[0]?.id || null
+    }
+  }
+  // Resolve the related order object from orders list if possible (for accurate order number)
+  const relatedOrderObj = Array.isArray(orderItems) && relatedOrderId
+    ? orderItems.find((o: any) => String(o?.id) === String(relatedOrderId))
+    : null
+  const relatedOrderNumber = (relatedOrderObj as any)?.order_number
+    || (relatedOrderObj as any)?.orderNumber
+    || (data as any)?.order_number
+    || (data as any)?.orderNumber
+    || (data as any)?.order?.order_number
+    || (data as any)?.order?.orderNumber
+    || '-'
+  const customerFirst = (customerDetails as any)?.first_name || (data as any)?.customer?.first_name || (data as any)?.customer_first_name || ''
+  const customerLast = (customerDetails as any)?.last_name || (data as any)?.customer?.last_name || (data as any)?.customer_last_name || ''
+  const customerEmail = (customerDetails as any)?.email || (data as any)?.customer?.email || (data as any)?.customer_email || ''
+  const customerPhone = (customerDetails as any)?.phone || (data as any)?.customer?.phone || (data as any)?.customer_phone || ''
+  const customerNumber = (customerDetails as any)?.customer_number || (data as any)?.customer?.customer_number || (data as any)?.customer_number || ''
+
+  // Try to resolve related order details for display
+  let relatedOrderServiceType: string | undefined
+  let relatedOrderBandwidth: string | undefined
+  if (relatedOrderObj) {
+    const sd = (relatedOrderObj as any)?.service_details || (relatedOrderObj as any)?.serviceDetails || {}
+    relatedOrderServiceType = sd?.serviceType || sd?.service_type
+    relatedOrderBandwidth = sd?.bandwidth
+  }
+
+  // Assignment details from onboarding row
+  const assignedToId = (data as any)?.assigned_to || (data as any)?.assignedTo || (data as any)?.assignee_id || null
+  const assignedToName = ((data as any)?.assigned_user && `${(data as any)?.assigned_user?.first_name ?? ''} ${(data as any)?.assigned_user?.last_name ?? ''}`.trim())
+    || (data as any)?.assigned_to_name
+    || null
+  const onboardingType = (data as any)?.onboarding_type || (data as any)?.onboardingType || 'standard'
 
   return (
     <div className="flex h-screen bg-background">
@@ -344,20 +355,7 @@ export default function OnboardingDetailsPage() {
                               <strong>Notes:</strong> {step.notes}
                             </div>
                           )}
-                          {step.status === "in_progress" && (
-                            <div className="mt-3">
-                              <Button size="sm" onClick={() => handleCompleteStep(step.id)} disabled={transitionLoading}>
-                                {transitionLoading ? 'Updating…' : 'Mark Complete'}
-                              </Button>
-                            </div>
-                          )}
-                          {step.status !== "in_progress" && (
-                            <div className="mt-3">
-                              <Button variant="outline" size="sm" disabled>
-                                {step.status === 'completed' ? 'Completed' : 'Pending'}
-                              </Button>
-                            </div>
-                          )}
+                          {/* Progress tracker only; manual step updates disabled */}
                         </div>
                       </div>
                     ))}
@@ -405,21 +403,19 @@ export default function OnboardingDetailsPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Name</p>
-                    <p className="text-sm">
-                      {mockOnboardingDetails.customer.firstName} {mockOnboardingDetails.customer.lastName}
-                    </p>
+                    <p className="text-sm">{loading ? '' : `${customerFirst} ${customerLast}`}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Customer Number</p>
-                    <p className="text-sm">{mockOnboardingDetails.customer.customerNumber}</p>
+                    <p className="text-sm">{loading ? '' : customerNumber}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Email</p>
-                    <p className="text-sm">{mockOnboardingDetails.customer.email}</p>
+                    <p className="text-sm">{loading ? '' : customerEmail}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Phone</p>
-                    <p className="text-sm">{mockOnboardingDetails.customer.phone}</p>
+                    <p className="text-sm">{loading ? '' : customerPhone}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -432,21 +428,27 @@ export default function OnboardingDetailsPage() {
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Order Number</p>
-                    <p className="text-sm">{mockOnboardingDetails.order.orderNumber}</p>
+                    <p className="text-sm">{loading ? '' : relatedOrderNumber}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Service Type</p>
-                    <p className="text-sm">{mockOnboardingDetails.order.serviceType}</p>
+                    <p className="text-sm">{loading ? '' : (relatedOrderServiceType || '-')}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Package</p>
-                    <p className="text-sm">{mockOnboardingDetails.order.servicePackage}</p>
+                    <p className="text-sm">{loading ? '' : (relatedOrderBandwidth || '-')}</p>
                   </div>
-                  <Link to={`/orders/${mockOnboardingDetails.order.id}`}>
+                  {relatedOrderId ? (
+                    <Link to={`/orders/${relatedOrderId}`}>
                     <Button variant="outline" size="sm" className="w-full bg-transparent">
                       View Order Details
                     </Button>
                   </Link>
+                  ) : (
+                    <Button variant="outline" size="sm" className="w-full bg-transparent" disabled>
+                      Order not linked
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
 
@@ -459,12 +461,12 @@ export default function OnboardingDetailsPage() {
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Assigned To</p>
                     <p className="text-sm">
-                      {mockOnboardingDetails.assignedTo.firstName} {mockOnboardingDetails.assignedTo.lastName}
+                      {loading ? '' : (assignedToName || (assignedToId ? `User ${assignedToId}` : 'Unassigned'))}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Type</p>
-                    <Badge variant="outline">{mockOnboardingDetails.onboardingType.replace("_", " ")}</Badge>
+                    <Badge variant="outline">{String(onboardingType).replace("_", " ")}</Badge>
                   </div>
                 </CardContent>
               </Card>

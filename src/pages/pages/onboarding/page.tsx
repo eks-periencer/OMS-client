@@ -14,6 +14,7 @@ import { Plus, Search, Eye, UserCheck, TrendingUp, Users, Calendar } from "lucid
 import { Link, useNavigate } from "react-router-dom"
 
 import { useOnboarding } from "../../../../hooks/useOnboarding"
+import { useOrders } from "../../../../hooks/useOrders"
 import { initiateOnboarding } from "../../../../lib/api/onboarding"
 import { useCustomers } from "../../../../hooks/useCustomers"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/components/ui/dialog"
@@ -102,24 +103,42 @@ export default function OnboardingPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
   const { items, loading, error, metrics, metricsLoading } = useOnboarding()
+  const { items: orderItems } = useOrders()
   const navigate = useNavigate()
   const [initiating, setInitiating] = useState(false)
   const { customers, loading: loadingCustomers, error: customersError } = useCustomers()
   const [isInitiateDialogOpen, setIsInitiateDialogOpen] = useState(false)
   const [customerSearch, setCustomerSearch] = useState("")
 
+  const customerIdsWithOrders = useMemo(() => {
+    const ids = new Set<string>()
+    const list = Array.isArray(orderItems) ? orderItems : []
+    for (const o of list) {
+      const cid = (o as any)?.customer_id ?? (o as any)?.customerId
+      if (cid) ids.add(String(cid))
+    }
+    return ids
+  }, [orderItems])
+
   const sortedFilteredCustomers = useMemo(() => {
     const list = Array.isArray(customers) ? customers : []
-    const filtered = list.filter((c: any) => {
-      const q = customerSearch.toLowerCase()
-      return (
-        `${c.first_name ?? ''} ${c.last_name ?? ''}`.toLowerCase().includes(q) ||
-        (c.email ?? '').toLowerCase().includes(q) ||
-        (c.customer_number ?? '').toLowerCase().includes(q)
-      )
-    })
+    // Only customers who have at least one order
+    const filtered = list
+      .filter((c: any) => {
+        // from orders API by cross-reference
+        const hasOrders = customerIdsWithOrders.has(String(c.id))
+        if (!hasOrders) return false
+
+        const q = customerSearch.toLowerCase()
+        return (
+          `${c.first_name ?? ''} ${c.last_name ?? ''}`.toLowerCase().includes(q) ||
+          (c.email ?? '').toLowerCase().includes(q) ||
+          (c.customer_number ?? '').toLowerCase().includes(q)
+        )
+      })
+
     return filtered.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }, [customers, customerSearch])
+  }, [customers, customerSearch, customerIdsWithOrders])
 
   async function initiateForCustomer(customerId: string) {
     try {

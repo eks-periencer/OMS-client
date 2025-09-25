@@ -27,11 +27,10 @@ import {
 } from "lucide-react"
 import { logout } from "../../../toolkit/authSlice"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../ui/popover"
 import { getMyNotifications, markNotificationsRead, type NotificationItem } from "../../../../lib/api/notifications"
 import { useNavigate } from "react-router-dom"
 
@@ -176,22 +175,6 @@ export function Sidebar() {
     window.location.href = "/login"
   }
 
-  const openNotifications = () =>{
-    setIsNotificationsOpen(true)
-  }
-
-  const closeNotifications = () => {
-    setIsNotificationsOpen(false)
-    // purge any that have expired after read
-    setNotifications((prev) => {
-      const purged = purgeExpired(prev)
-      // persist read map accurately
-      const map: Record<string, string> = {}
-      purged.forEach((n) => { if (n.readAt) map[n._id] = n.readAt })
-      localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
-      return purged
-    })
-  }
 
   return (
     <div
@@ -223,14 +206,61 @@ export function Sidebar() {
         <div className="p-4 border-b border-sidebar-border">
           {isCollapsed ? (
             <div className="flex items-center justify-center">
-              <div className="relative" onClick={openNotifications}>
-                <Bell size={18} className="cursor-pointer" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </div>
+              <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+                <PopoverTrigger asChild>
+                  <div className="relative cursor-pointer">
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 mt-2" align="end" side="right" sideOffset={8}>
+                  <div className="p-4 border-b bg-muted/30">
+                    <h4 className="font-semibold text-sm text-foreground">Notifications</h4>
+                  </div>
+                  <div className="max-h-80 overflow-auto scrollbar-hide">
+                    {unreadNotifications.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <Inbox className="mx-auto h-10 w-10 text-muted-foreground/60 mb-3" />
+                        <div className="text-sm text-muted-foreground font-medium">No new notifications</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</div>
+                      </div>
+                    ) : (
+                      unreadNotifications.map((n) => (
+                        <button
+                          key={n._id}
+                          className="w-full text-left border-b border-border/50 p-4 hover:bg-accent/50 transition-colors duration-200 last:border-b-0 group"
+                          onClick={() => {
+                            setNotifications((prev) => {
+                              const nowIso = new Date().toISOString()
+                              const next = prev.map((it) => it._id === n._id && !it.readAt ? { ...it, readAt: nowIso } : it)
+                              const mapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
+                              const map: Record<string, string> = mapRaw ? JSON.parse(mapRaw) : {}
+                              map[n._id] = map[n._id] || nowIso
+                              localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
+                              return next
+                            })
+                            markNotificationsRead([n._id]).catch(() => {})
+                            if (n.url) {
+                              setIsNotificationsOpen(false)
+                              navigate(n.url)
+                            }
+                          }}
+                        >
+                          <div className="text-sm font-semibold text-foreground group-hover:text-foreground/90">{n.title}</div>
+                          <div className="text-sm text-muted-foreground mt-1 leading-relaxed">{n.message}</div>
+                          <div className="mt-2 text-xs text-muted-foreground/70 font-medium">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -240,14 +270,61 @@ export function Sidebar() {
                 </div>
                 <div className="text-xs text-sidebar-foreground/70">{user.role_name || "Malicous Actor"}</div>
               </div>
-              <div className="relative" onClick={openNotifications}>
-                <Bell size={25} className="cursor-pointer" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </div>
+              <Popover open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+                <PopoverTrigger asChild>
+                  <div className="relative cursor-pointer">
+                    <Bell size={25} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 mt-2" align="end" side="right" sideOffset={8}>
+                  <div className="p-4 border-b bg-muted/30">
+                    <h4 className="font-semibold text-sm text-foreground">Notifications</h4>
+                  </div>
+                  <div className="max-h-80 overflow-auto scrollbar-hide">
+                    {unreadNotifications.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <Inbox className="mx-auto h-10 w-10 text-muted-foreground/60 mb-3" />
+                        <div className="text-sm text-muted-foreground font-medium">No new notifications</div>
+                        <div className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</div>
+                      </div>
+                    ) : (
+                      unreadNotifications.map((n) => (
+                        <button
+                          key={n._id}
+                          className="w-full text-left border-b border-border/50 p-4 hover:bg-accent/50 transition-colors duration-200 last:border-b-0 group"
+                          onClick={() => {
+                            setNotifications((prev) => {
+                              const nowIso = new Date().toISOString()
+                              const next = prev.map((it) => it._id === n._id && !it.readAt ? { ...it, readAt: nowIso } : it)
+                              const mapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
+                              const map: Record<string, string> = mapRaw ? JSON.parse(mapRaw) : {}
+                              map[n._id] = map[n._id] || nowIso
+                              localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
+                              return next
+                            })
+                            markNotificationsRead([n._id]).catch(() => {})
+                            if (n.url) {
+                              setIsNotificationsOpen(false)
+                              navigate(n.url)
+                            }
+                          }}
+                        >
+                          <div className="text-sm font-semibold text-foreground group-hover:text-foreground/90">{n.title}</div>
+                          <div className="text-sm text-muted-foreground mt-1 leading-relaxed">{n.message}</div>
+                          <div className="mt-2 text-xs text-muted-foreground/70 font-medium">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           )}
         </div>
@@ -378,50 +455,6 @@ export function Sidebar() {
         onConfirm={confirmLogout}
       />
 
-      <Dialog open={isNotificationsOpen} onOpenChange={(open)=> open ? openNotifications() : closeNotifications()}>
-          <DialogContent showCloseButton>
-            <DialogHeader>
-              <DialogTitle>Notifications</DialogTitle>
-            </DialogHeader>
-            <div className="max-h-72 overflow-auto space-y-3">
-            {unreadNotifications.length === 0 ? (
-              <div className="py-10 text-center">
-                <Inbox className="mx-auto h-8 w-8 text-muted-foreground mb-2 animate-pulse" />
-                <div className="text-sm text-muted-foreground">No new notifications</div>
-              </div>
-            ) : (
-              unreadNotifications.map((n) => (
-                <button
-                  key={n._id}
-                  className="w-full text-left border rounded-md p-3 hover:bg-accent/40"
-                  onClick={() => {
-                    setNotifications((prev) => {
-                      const nowIso = new Date().toISOString()
-                      const next = prev.map((it) => it._id === n._id && !it.readAt ? { ...it, readAt: nowIso } : it)
-                      const mapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
-                      const map: Record<string, string> = mapRaw ? JSON.parse(mapRaw) : {}
-                      map[n._id] = map[n._id] || nowIso
-                      localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
-                      return next
-                    })
-                    markNotificationsRead([n._id]).catch(() => {})
-                    if (n.url) {
-                      closeNotifications()
-                      navigate(n.url)
-                    }
-                  }}
-                >
-                  <div className="text-sm font-medium">{n.title}</div>
-                  <div className="text-sm text-muted-foreground">{n.message}</div>
-                  <div className="mt-1 text-[11px] text-muted-foreground">
-                    {new Date(n.createdAt).toLocaleString()}
-                  </div>
-                </button>
-              ))
-            )}
-            </div>
-          </DialogContent>
-      </Dialog>
     </div>
   )
 }

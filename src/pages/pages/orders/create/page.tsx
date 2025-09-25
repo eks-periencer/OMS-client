@@ -1,6 +1,6 @@
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { Sidebar } from "../../../../components/components/layout/sidebar"
 import { Button } from "../../../../components/components/ui/button"
@@ -14,12 +14,14 @@ import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useOrders } from "../../../../../hooks/useOrders"
 import { useCustomers } from "../../../../../hooks/useCustomers"
+import { useOnboarding } from "../../../../../hooks/useOnboarding"
 import Swal from "sweetalert2"
 
 export default function CreateOrderPage() {
   const navigate = useNavigate()
-  const { createOrder } = useOrders()
+  const { createOrder, items: ordersList } = useOrders()
   const { customers, loading: customersLoading } = useCustomers()
+  const { items: onboardingItems } = useOnboarding()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -27,11 +29,33 @@ export default function CreateOrderPage() {
   const [serviceType, setServiceType] = useState("")
   const [servicePackage, setServicePackage] = useState("")
   const [priority, setPriority] = useState("normal")
+  const [orderType, setOrderType] = useState("new_install")
   const [notes, setNotes] = useState("")
   const [street, setStreet] = useState("")
   const [city, setCity] = useState("")
   const [province, setProvince] = useState("")
   const [postalCode, setPostalCode] = useState("")
+
+  const eligibleCustomers = useMemo(() => {
+    const activeOrderCustomerIds = new Set<string>()
+    for (const o of (ordersList ?? [])) {
+      const status = (o as any)?.current_state || (o as any)?.status || 'created'
+      const isActive = !['completed','cancelled'].includes(String(status))
+      const cid = (o as any)?.customer_id ?? (o as any)?.customerId
+      if (cid && isActive) activeOrderCustomerIds.add(String(cid))
+    }
+    const activeOnboardingCustomerIds = new Set<string>()
+    for (const ob of (onboardingItems ?? [])) {
+      const step = String((ob as any)?.current_step || '').toLowerCase()
+      const done = step === 'completed'
+      const cid = (ob as any)?.customer_id ?? (ob as any)?.customerId
+      if (cid && !done) activeOnboardingCustomerIds.add(String(cid))
+    }
+    return (customers ?? []).filter((c: any) => {
+      const id = String(c?.id)
+      return !activeOrderCustomerIds.has(id) && !activeOnboardingCustomerIds.has(id)
+    })
+  }, [customers, ordersList, onboardingItems])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,9 +67,14 @@ export default function CreateOrderPage() {
         throw new Error("Please fill in all required fields")
       }
 
+      // Normalize order type to backend/PRD-supported values
+      const normalizedOrderType = orderType === 'upgrade' ? 'service_change' : orderType
+      const allowedOrderTypes = new Set(['new_install', 'service_change', 'disconnect'])
+      const finalOrderType = allowedOrderTypes.has(normalizedOrderType) ? normalizedOrderType : 'new_install'
+
       const orderData = {
         customerId,
-        orderType: "new_install", // This should always be 'new_install' for new orders
+        orderType: finalOrderType,
         priority: priority as "low" | "normal" | "high" | "urgent",
         serviceAddress: {
           street,
@@ -62,25 +91,12 @@ export default function CreateOrderPage() {
       }
 
       await createOrder(orderData)
-      
-      await Swal.fire({
-        icon: 'success',
-        title: 'Order Created!',
-        text: 'The order has been successfully created.',
-        timer: 2000,
-        showConfirmButton: false
-      })
-
+      await Swal.fire({ icon: 'success', title: 'Order Created!', text: 'The order has been successfully created.', timer: 2000, showConfirmButton: false })
       navigate("/orders")
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create order"
       setError(errorMessage)
-      
-      await Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: errorMessage
-      })
+      await Swal.fire({ icon: 'error', title: 'Error', text: errorMessage })
     } finally {
       setIsLoading(false)
     }
@@ -101,9 +117,9 @@ export default function CreateOrderPage() {
             </Link>
             <div className="ml-60">
               <h1 className="text-3xl font-bold text-foreground">Create New Order</h1>
-              <p className="text-muted-foreground">Create a new customer installation order</p>
+              <p className="text-muted-foreground">Create a new customer order</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Order Type: <span className="font-medium">New Installation</span>
+                Order Type: <span className="font-medium">{orderType === 'new_install' ? 'New Installation' : orderType === 'service_change' ? 'Service Change' : orderType === 'disconnect' ? 'Disconnect' : orderType}</span>
               </p>
             </div>
           </div>
@@ -123,24 +139,39 @@ export default function CreateOrderPage() {
                       <SelectValue placeholder={customersLoading ? "Loading customers..." : "Select a customer"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {customers.map((customer) => (
+                      {eligibleCustomers.map((customer: any) => (
                         <SelectItem key={customer.id} value={customer.id}>
                           {customer.first_name} {customer.last_name} - {customer.email}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Only customers without an active order or onboarding are listed.</p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Service Information */}
+            {/* Order Type & Service Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Service Information</CardTitle>
-                <CardDescription>Configure the service details for this new installation order</CardDescription>
+                <CardTitle>Order & Service Information</CardTitle>
+                <CardDescription>Select the order type and configure service details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="orderType">Order Type *</Label>
+                  <Select value={orderType} onValueChange={setOrderType} required>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new_install">New Installation</SelectItem>
+                      <SelectItem value="service_change">Service Change</SelectItem>
+                      <SelectItem value="disconnect">Disconnect</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="serviceType">Service Type *</Label>
                   <Select value={serviceType} onValueChange={setServiceType} required>

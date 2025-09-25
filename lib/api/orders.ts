@@ -77,7 +77,7 @@ export async function listOrders(): Promise<OrderItem[]> {
     priority: it.priority ?? 'normal',
     service_type: it.service_type ?? it.serviceType ?? '',
     service_package: it.service_package ?? it.servicePackage ?? '',
-    current_state: it.current_state ?? it.currentState ?? 'created',
+    current_state: it.current_state ?? it.currentState ?? it.status ?? 'created',
     fno_id: it.fno_id ?? it.fnoId ?? '',
     fno_reference: it.fno_reference ?? it.fnoReference ?? '',
     created_at: it.created_at ?? it.createdAt ?? '',
@@ -102,7 +102,7 @@ export async function listOrders(): Promise<OrderItem[]> {
 
 export async function getOrder(id: string): Promise<OrderItem> {
   const { data } = await api.get(`/orders/${id}`);
-  const rawOrder = data?.data || data;
+  const rawOrder = (data?.data || data?.order || data);
   
   // Normalize the order data to match the expected structure
   return {
@@ -111,7 +111,7 @@ export async function getOrder(id: string): Promise<OrderItem> {
     customer_id: rawOrder.customer_id ?? rawOrder.customerId ?? '',
     order_type: rawOrder.order_type ?? rawOrder.orderType ?? 'new_install',
     priority: rawOrder.priority ?? 'normal',
-    current_state: rawOrder.current_state ?? rawOrder.currentState ?? 'created',
+    current_state: rawOrder.current_state ?? rawOrder.currentState ?? rawOrder.status ?? 'created',
     fno_id: rawOrder.fno_id ?? rawOrder.fnoId ?? '',
     fno_reference: rawOrder.fno_reference ?? rawOrder.fnoReference ?? '',
     created_at: rawOrder.created_at ?? rawOrder.createdAt ?? '',
@@ -152,6 +152,24 @@ export async function getOrderWorkflowState(id: string): Promise<{ state: string
 
 export async function getOrderWorkflowHistory(id: string): Promise<any[]> {
   const { data } = await api.get(`/orders/${id}/history`);
-  // The backend returns both legacy and workflow history, we want the workflow history
-  return data?.workflowHistory || data?.data?.workflowHistory || [];
+  const raw = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.workflowHistory)
+        ? data.workflowHistory
+        : Array.isArray(data?.data?.workflowHistory)
+          ? data.data.workflowHistory
+          : Array.isArray(data?.history)
+            ? data.history
+            : [];
+
+  return raw.map((h: any) => ({
+    toState: h.to_state_name ?? h.toStateName ?? h.to_state ?? h.toState ?? h.state ?? h.to ?? 'unknown',
+    fromState: h.from_state_name ?? h.fromStateName ?? h.from_state ?? h.fromState ?? null,
+    transitionName: h.transition_name ?? h.transitionName ?? undefined,
+    occurredAt: h.executed_at ?? h.occurred_at ?? h.occurredAt ?? h.timestamp ?? null,
+    actorId: h.executed_by ?? h.actor_id ?? h.actorId ?? null,
+    reason: h.execution_reason ?? h.reason ?? undefined,
+  }));
 }
