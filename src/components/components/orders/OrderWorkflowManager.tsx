@@ -13,20 +13,41 @@ interface OrderWorkflowManagerProps {
   onUpdate: () => void
 }
 
-const workflowStates = [
-  { key: 'created', label: 'Created', description: 'Order has been created', icon: CheckCircle },
-  { key: 'validated', label: 'Validated', description: 'Order has passed validation', icon: CheckCircle },
-  { key: 'enriched', label: 'Enriched', description: 'Order has been enriched with data', icon: CheckCircle },
-  { key: 'fno_submitted', label: 'FNO Submitted', description: 'Order submitted to FNO', icon: Clock },
-  { key: 'fno_accepted', label: 'FNO Accepted', description: 'FNO has accepted the order', icon: CheckCircle },
-  { key: 'fno_rejected', label: 'FNO Rejected', description: 'FNO has rejected the order', icon: AlertTriangle },
-  { key: 'installation_scheduled', label: 'Installation Scheduled', description: 'Installation has been scheduled', icon: Clock },
-  { key: 'in_progress', label: 'In Progress', description: 'Installation is in progress', icon: Play },
-  { key: 'installed', label: 'Installed', description: 'Service has been installed', icon: CheckCircle },
-  { key: 'activated', label: 'Activated', description: 'Service has been activated', icon: CheckCircle },
-  { key: 'completed', label: 'Completed', description: 'Order has been completed', icon: CheckCircle },
-  { key: 'cancelled', label: 'Cancelled', description: 'Order has been cancelled', icon: AlertTriangle }
-]
+// Per-order-type workflow state maps (PRD-aligned)
+const workflowStatesMap: Record<string, Array<{ key: string; label: string; description: string; icon: any }>> = {
+  new_install: [
+    { key: 'created', label: 'Created', description: 'Order has been created', icon: CheckCircle },
+    { key: 'validated', label: 'Validated', description: 'Order has passed validation', icon: CheckCircle },
+    { key: 'enriched', label: 'Enriched', description: 'Order has been enriched with data', icon: CheckCircle },
+    { key: 'fno_submitted', label: 'FNO Submitted', description: 'Order submitted to FNO', icon: Clock },
+    { key: 'fno_accepted', label: 'FNO Accepted', description: 'FNO has accepted the order', icon: CheckCircle },
+    { key: 'installation_scheduled', label: 'Installation Scheduled', description: 'Installation has been scheduled', icon: Clock },
+    { key: 'in_progress', label: 'In Progress', description: 'Installation is in progress', icon: Play },
+    { key: 'installed', label: 'Installed', description: 'Service has been installed', icon: CheckCircle },
+    { key: 'activated', label: 'Activated', description: 'Service has been activated', icon: CheckCircle },
+    { key: 'completed', label: 'Completed', description: 'Order has been completed', icon: CheckCircle },
+    { key: 'cancelled', label: 'Cancelled', description: 'Order has been cancelled', icon: AlertTriangle }
+  ],
+  service_change: [
+    { key: 'created', label: 'Created', description: 'Service change order created', icon: CheckCircle },
+    { key: 'validated', label: 'Validated', description: 'Order validated for change', icon: CheckCircle },
+    { key: 'change_scheduled', label: 'Change Scheduled', description: 'Change has been scheduled', icon: Clock },
+    { key: 'in_progress', label: 'In Progress', description: 'Service change is being applied', icon: Play },
+    { key: 'changed', label: 'Change Applied', description: 'Service change applied successfully', icon: CheckCircle },
+    { key: 'activated', label: 'Re-Activated', description: 'Service re-activated after change', icon: CheckCircle },
+    { key: 'completed', label: 'Completed', description: 'Service change completed', icon: CheckCircle },
+    { key: 'cancelled', label: 'Cancelled', description: 'Order has been cancelled', icon: AlertTriangle }
+  ],
+  disconnect: [
+    { key: 'created', label: 'Created', description: 'Disconnect order created', icon: CheckCircle },
+    { key: 'validated', label: 'Validated', description: 'Order validated for disconnection', icon: CheckCircle },
+    { key: 'disconnection_scheduled', label: 'Disconnection Scheduled', description: 'Disconnection scheduled with customer', icon: Clock },
+    { key: 'in_progress', label: 'In Progress', description: 'Disconnection underway', icon: Play },
+    { key: 'disconnected', label: 'Disconnected', description: 'Service disconnected', icon: CheckCircle },
+    { key: 'completed', label: 'Completed', description: 'Disconnection completed', icon: CheckCircle },
+    { key: 'cancelled', label: 'Cancelled', description: 'Order has been cancelled', icon: AlertTriangle }
+  ]
+}
 
 export function OrderWorkflowManager({ order, onUpdate }: OrderWorkflowManagerProps) {
   const { getOrderWorkflowState, getOrderWorkflowHistory } = useOrders()
@@ -35,6 +56,8 @@ export function OrderWorkflowManager({ order, onUpdate }: OrderWorkflowManagerPr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const orderType = (order?.order_type || order?.orderType || 'new_install') as string
+  const workflowStates = workflowStatesMap[orderType] || workflowStatesMap['new_install']
   const currentState = (order?.current_state || order?.currentState || order?.status || 'created') as string
   const currentStateIndex = workflowStates.findIndex(state => state.key === currentState)
 
@@ -87,7 +110,17 @@ export function OrderWorkflowManager({ order, onUpdate }: OrderWorkflowManagerPr
 
   const calculateProgress = () => {
     if (currentStateIndex === -1) return 0
-    return Math.round((currentStateIndex / (workflowStates.length - 1)) * 100)
+    // Use 'completed' as the end-of-flow for progress if present
+    const completedIndex = workflowStates.findIndex(s => s.key === 'completed')
+    const cancelledIndex = workflowStates.findIndex(s => s.key === 'cancelled')
+    // If current state is a terminal state, show 100%
+    if (workflowStates[currentStateIndex]?.key === 'completed' || workflowStates[currentStateIndex]?.key === 'cancelled') {
+      return 100
+    }
+    const denominatorIndex = completedIndex !== -1 ? completedIndex : (workflowStates.length - 1)
+    const clampedIndex = Math.min(currentStateIndex, denominatorIndex)
+    if (denominatorIndex <= 0) return 0
+    return Math.round((clampedIndex / denominatorIndex) * 100)
   }
 
   if (loading) {

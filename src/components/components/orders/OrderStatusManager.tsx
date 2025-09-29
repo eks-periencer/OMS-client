@@ -13,19 +13,40 @@ interface OrderStatusManagerProps {
   onUpdate: () => void
 }
 
-const statusTransitions: Record<string, string[]> = {
-  'created': ['validated', 'cancelled'],
-  'validated': ['enriched', 'cancelled'],
-  'enriched': ['fno_submitted', 'cancelled'],
-  'fno_submitted': ['fno_accepted', 'fno_rejected', 'cancelled'],
-  'fno_accepted': ['installation_scheduled', 'cancelled'],
-  'fno_rejected': ['enriched', 'cancelled'],
-  'installation_scheduled': ['in_progress', 'cancelled'],
-  'in_progress': ['installed', 'cancelled'],
-  'installed': ['activated', 'cancelled'],
-  'activated': ['completed'],
-  'completed': [],
-  'cancelled': []
+// Per-order-type transition maps (fallback to new_install)
+const statusTransitionsByType: Record<string, Record<string, string[]>> = {
+  new_install: {
+    created: ['validated', 'cancelled'],
+    validated: ['enriched', 'cancelled'],
+    enriched: ['fno_submitted', 'cancelled'],
+    fno_submitted: ['fno_accepted', 'cancelled'],
+    fno_accepted: ['installation_scheduled', 'cancelled'],
+    installation_scheduled: ['in_progress', 'cancelled'],
+    in_progress: ['installed', 'cancelled'],
+    installed: ['activated', 'cancelled'],
+    activated: ['completed'],
+    completed: [],
+    cancelled: []
+  },
+  service_change: {
+    created: ['validated', 'cancelled'],
+    validated: ['change_scheduled', 'cancelled'],
+    change_scheduled: ['in_progress', 'cancelled'],
+    in_progress: ['changed', 'cancelled'],
+    changed: ['activated', 'cancelled'],
+    activated: ['completed'],
+    completed: [],
+    cancelled: []
+  },
+  disconnect: {
+    created: ['validated', 'cancelled'],
+    validated: ['disconnection_scheduled', 'cancelled'],
+    disconnection_scheduled: ['in_progress', 'cancelled'],
+    in_progress: ['disconnected', 'cancelled'],
+    disconnected: ['completed'],
+    completed: [],
+    cancelled: []
+  }
 }
 
 const statusLabels: Record<string, string> = {
@@ -40,7 +61,13 @@ const statusLabels: Record<string, string> = {
   'installed': 'Installed',
   'activated': 'Activated',
   'completed': 'Completed',
-  'cancelled': 'Cancelled'
+  'cancelled': 'Cancelled',
+  // service_change
+  'change_scheduled': 'Change Scheduled',
+  'changed': 'Change Applied',
+  // disconnect
+  'disconnection_scheduled': 'Disconnection Scheduled',
+  'disconnected': 'Disconnected'
 }
 
 const statusDescriptions: Record<string, string> = {
@@ -55,7 +82,13 @@ const statusDescriptions: Record<string, string> = {
   'installed': 'Service has been installed',
   'activated': 'Service has been activated',
   'completed': 'Order has been completed',
-  'cancelled': 'Order has been cancelled'
+  'cancelled': 'Order has been cancelled',
+  // service_change
+  'change_scheduled': 'Service change has been scheduled',
+  'changed': 'Service change applied successfully',
+  // disconnect
+  'disconnection_scheduled': 'Service disconnection has been scheduled',
+  'disconnected': 'Service has been disconnected'
 }
 
 export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps) {
@@ -67,10 +100,12 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
   const [error, setError] = useState<string | null>(null)
 
   const currentState = (order?.current_state || order?.currentState || order?.status || 'created') as string
+  const orderType = (order?.order_type || order?.orderType || 'new_install') as string
+  const mapForType = statusTransitionsByType[orderType] || statusTransitionsByType['new_install']
   const validTransitionsFromWorkflow = (workflowState?.transitions || []).map((t: any) => t.toState)
   const baseTransitions = (validTransitionsFromWorkflow.length > 0
     ? validTransitionsFromWorkflow
-    : (statusTransitions[currentState] || []))
+    : (mapForType[currentState] || []))
   // Business rule: prevent selecting 'enriched' here; enrichment must be done via Enrichment tab
   const validTransitions = baseTransitions.filter((s: string) => s !== 'enriched')
 
@@ -132,6 +167,8 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
         return <AlertTriangle className="h-4 w-4 text-red-600" />
       case 'in_progress':
       case 'installation_scheduled':
+      case 'change_scheduled':
+      case 'disconnection_scheduled':
         return <Clock className="h-4 w-4 text-blue-600" />
       default:
         return <Clock className="h-4 w-4 text-gray-600" />
@@ -148,7 +185,7 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
           <span>Order Status Management</span>
         </CardTitle>
         <CardDescription>
-          Current status: <Badge variant="outline">{statusLabels[currentState] || currentState}</Badge>
+          Current status: <Badge variant="outline">{statusLabels[currentState] || currentState.replace(/_/g, ' ')}</Badge>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -162,9 +199,9 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
               <div className="mt-2">
                 <p className="text-xs font-medium text-blue-700">Valid Transitions:</p>
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {workflowState.transitions.map((transition: any) => (
+                  {workflowState.transitions.filter((t: any) => !!t?.toState).map((transition: any) => (
                     <Badge key={transition.toState} variant="secondary" className="text-xs">
-                      {statusLabels[transition.toState] || transition.toState}
+                      {statusLabels[transition.toState] || transition.toState.replace(/_/g, ' ')}
                     </Badge>
                   ))}
                 </div>

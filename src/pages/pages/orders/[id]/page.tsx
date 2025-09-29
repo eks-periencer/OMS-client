@@ -310,12 +310,12 @@ export default function OrderDetailsPage() {
                   </CardHeader>
                   <CardContent>
                     {order.service_address ? (
-                      <div className="space-y-1">
+                    <div className="space-y-1">
                         <p className="text-sm">{order.service_address.street}</p>
                         <p className="text-sm">{order.service_address.city}</p>
                         <p className="text-sm">{order.service_address.province}</p>
                         <p className="text-sm">{order.service_address.postalCode}</p>
-                      </div>
+                    </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">No address provided</p>
                     )}
@@ -364,27 +364,27 @@ export default function OrderDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   {workflowHistory.length > 0 ? (
-                    <div className="space-y-4">
+                  <div className="space-y-4">
                       {workflowHistory.map((entry, index) => (
                         <div key={entry.id || index} className="flex items-start space-x-4">
-                          <div className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-2"></div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2">
+                        <div className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-2"></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
                               <Badge className={getStatusColor(entry.toState)}>
                                 {entry.toState?.replace("_", " ") || "Unknown"}
                               </Badge>
-                              <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground">
                                 {entry.occurredAt ? new Date(entry.occurredAt).toLocaleString() : "N/A"}
-                              </span>
-                            </div>
-                            <p className="text-sm mt-1">{entry.reason || entry.transitionName || "No reason provided"}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Actor: {entry.actorId || "System"}
-                            </p>
+                            </span>
                           </div>
+                            <p className="text-sm mt-1">{entry.reason || entry.transitionName || "No reason provided"}</p>
+                          <p className="text-xs text-muted-foreground">
+                              Actor: {entry.actorId || "System"}
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
+                  </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No state history available.</p>
                   )}

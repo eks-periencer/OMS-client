@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/components/ui/tabs"
 import { Progress } from "../../../components/components/ui/progress"
-import { Plus, Search, Eye, UserCheck, TrendingUp, Users, Calendar } from "lucide-react"
+import { Plus, Search, Eye, UserCheck, TrendingUp } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { useOnboarding } from "../../../../hooks/useOnboarding"
@@ -20,51 +20,6 @@ import { useCustomers } from "../../../../hooks/useCustomers"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../components/components/ui/dialog"
 import { SlaStatusBadge } from "../../../components/components/onboarding/SlaStatusBadge"
 import { SlaMetricsCard } from "../../../components/components/onboarding/SlaMetricsCard"
-
-const mockTrialCustomers = [
-  {
-    id: "1",
-    customerNumber: "CUST-002",
-    firstName: "Sarah",
-    lastName: "Johnson",
-    email: "sarah@example.com",
-    trialStartDate: "2025-01-05T00:00:00Z",
-    trialEndDate: "2025-02-04T00:00:00Z",
-    daysRemaining: 26,
-    engagementScore: 85,
-    lastActivity: "2025-01-09T16:30:00Z",
-    conversionCampaigns: 2,
-    status: "active",
-  },
-  {
-    id: "2",
-    customerNumber: "CUST-006",
-    firstName: "Emma",
-    lastName: "Davis",
-    email: "emma@example.com",
-    trialStartDate: "2025-01-02T00:00:00Z",
-    trialEndDate: "2025-02-01T00:00:00Z",
-    daysRemaining: 23,
-    engagementScore: 45,
-    lastActivity: "2025-01-07T10:15:00Z",
-    conversionCampaigns: 1,
-    status: "at_risk",
-  },
-  {
-    id: "3",
-    customerNumber: "CUST-007",
-    firstName: "Tom",
-    lastName: "Brown",
-    email: "tom@example.com",
-    trialStartDate: "2024-12-28T00:00:00Z",
-    trialEndDate: "2025-01-27T00:00:00Z",
-    daysRemaining: 18,
-    engagementScore: 92,
-    lastActivity: "2025-01-09T18:45:00Z",
-    conversionCampaigns: 3,
-    status: "high_potential",
-  },
-]
 
 // Stats are derived from live onboarding items
 
@@ -77,21 +32,6 @@ function getStatusColor(status: string) {
     case "at_risk":
       return "bg-orange-100 text-orange-800"
     case "overdue":
-      return "bg-red-100 text-red-800"
-    default:
-      return "bg-gray-100 text-gray-800"
-  }
-}
-
-function getTrialStatusColor(status: string) {
-  switch (status) {
-    case "active":
-      return "bg-green-100 text-green-800"
-    case "high_potential":
-      return "bg-blue-100 text-blue-800"
-    case "at_risk":
-      return "bg-orange-100 text-orange-800"
-    case "expired":
       return "bg-red-100 text-red-800"
     default:
       return "bg-gray-100 text-gray-800"
@@ -179,6 +119,23 @@ export default function OnboardingPage() {
       // eslint-disable-next-line no-console
       console.log('[OnboardingPage] raw items:', items)
     }
+    function getWorkflowSequence(orderType: string): string[] {
+      const t = String(orderType || 'new_install').toLowerCase()
+      if (t === 'service_change') return ['created','validated','change_scheduled','in_progress','changed','activated','completed']
+      if (t === 'disconnect') return ['created','validated','disconnect_scheduled','in_progress','disconnected','completed']
+      return ['created','validated','enriched','fno_submitted','fno_accepted','installation_scheduled','in_progress','installed','activated','completed']
+    }
+
+    function resolveOrderForOnboarding(o: any): any | null {
+      const list = Array.isArray(orderItems) ? orderItems : []
+      const byId = list.find((ord: any) => String(ord?.id) === String(o?.order_id))
+      if (byId) return byId
+      const sameCustomer = list
+        .filter((ord: any) => String(ord?.customer_id ?? ord?.customerId) === String(o?.customer_id))
+        .sort((a: any, b: any) => new Date(b?.created_at ?? b?.createdAt ?? 0).getTime() - new Date(a?.created_at ?? a?.createdAt ?? 0).getTime())
+      return sameCustomer[0] || null
+    }
+
     const list = items.map((o) => {
       const c = o.customer_id ? customerById[o.customer_id] : undefined
       const firstName = c?.first_name || c?.firstName || ''
@@ -186,7 +143,13 @@ export default function OnboardingPage() {
       const email = c?.email || ''
       const customerNumber = c?.customer_number || c?.customerNumber || (o.customer_id || '').slice(0, 8)
       const slaStatus = slaByOnboardingId[o.id]
-      
+      const ord = resolveOrderForOnboarding(o)
+      const orderType = (ord as any)?.order_type ?? (ord as any)?.orderType ?? 'new_install'
+      const orderStatus = (ord as any)?.current_state ?? (ord as any)?.status ?? 'created'
+      const seq = getWorkflowSequence(orderType)
+      const idx = Math.max(0, seq.indexOf(String(orderStatus).toLowerCase()))
+      const pct = Math.round((idx / Math.max(1, seq.length - 1)) * 100)
+
       return {
       id: o.id,
       customer: {
@@ -196,13 +159,14 @@ export default function OnboardingPage() {
         email,
         customerNumber,
       },
-      onboardingType: o.onboarding_type || "standard",
-      currentStep: o.current_step || "initiated",
-      completionPercentage: o.completion_percentage || 0,
+      onboardingType: orderType,
+      orderType,
+      currentStep: String(orderStatus),
+      completionPercentage: pct,
       assignedTo: { firstName: "", lastName: "" },
       startedAt: o.started_at || "",
       estimatedCompletion: "",
-      status: (o.current_step && o.current_step !== 'completed') ? 'in_progress' : 'completed',
+      status: String(orderStatus) === 'completed' ? 'completed' : 'in_progress',
       slaStatus: slaStatus?.slaStatus || 'unknown',
       slaHours: slaStatus?.slaHours || 0,
       elapsedHours: slaStatus?.elapsedHours || 0,
@@ -253,15 +217,6 @@ export default function OnboardingPage() {
       conversionRate: 0,
     }
   }, [items])
-
-  const filteredTrials = mockTrialCustomers.filter((customer) => {
-    const matchesSearch =
-      `${customer.firstName} ${customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.customerNumber.toLowerCase().includes(searchTerm.toLowerCase())
-
-    return matchesSearch
-  })
 
   return (
     <div className="flex h-screen bg-background">
@@ -315,7 +270,7 @@ export default function OnboardingPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Trial Customers</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{liveStats.trialCustomers}</div>
@@ -326,7 +281,7 @@ export default function OnboardingPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{liveStats.conversionRate}%</div>
@@ -345,7 +300,6 @@ export default function OnboardingPage() {
           <Tabs defaultValue="onboarding" className="space-y-6">
             <TabsList>
               <TabsTrigger value="onboarding">Active Onboarding</TabsTrigger>
-              <TabsTrigger value="trials">Trial Management</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
 
@@ -488,111 +442,6 @@ export default function OnboardingPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="trials" className="space-y-6">
-              {/* Trial Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Active Trials</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-green-600">
-                      {mockTrialCustomers.filter((c) => c.status === "active").length}
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">High Potential</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {mockTrialCustomers.filter((c) => c.status === "high_potential").length}
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">At Risk</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-orange-600">
-                      {mockTrialCustomers.filter((c) => c.status === "at_risk").length}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Trial Customers Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Trial Customers ({filteredTrials.length})</CardTitle>
-                  <CardDescription>Manage trial customers and conversion campaigns</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Trial Period</TableHead>
-                        <TableHead>Engagement</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Campaigns</TableHead>
-                        <TableHead>Last Activity</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTrials.map((customer) => (
-                        <TableRow key={customer.id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">
-                                {customer.firstName} {customer.lastName}
-                              </div>
-                              <div className="text-sm text-muted-foreground">{customer.customerNumber}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="text-sm font-medium">{customer.daysRemaining} days left</div>
-                              <div className="text-xs text-muted-foreground">
-                                Ends {new Date(customer.trialEndDate).toLocaleDateString()}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <Progress value={customer.engagementScore} className="w-16" />
-                              <span className="text-xs text-muted-foreground">{customer.engagementScore}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getTrialStatusColor(customer.status)}>
-                              {customer.status.replace("_", " ")}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">{customer.conversionCampaigns} sent</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">{new Date(customer.lastActivity).toLocaleDateString()}</div>
-                          </TableCell>
-                          <TableCell>
-                            <Link to={`/onboarding/trials/${customer.id}`}>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Manage
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="analytics">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
