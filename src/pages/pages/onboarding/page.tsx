@@ -98,6 +98,44 @@ export default function OnboardingPage() {
     }
   }
 
+  // SLA thresholds and calculator to mirror order SLA
+  const slaThresholds: Record<string, { warning: number; breach: number }> = {
+    created: { warning: 1, breach: 2 },
+    validated: { warning: 2, breach: 4 },
+    enriched: { warning: 4, breach: 8 },
+    fno_submitted: { warning: 8, breach: 24 },
+    fno_accepted: { warning: 2, breach: 4 },
+    installation_scheduled: { warning: 4, breach: 8 },
+    in_progress: { warning: 24, breach: 48 },
+    installed: { warning: 2, breach: 4 },
+    activated: { warning: 1, breach: 2 },
+    completed: { warning: 0, breach: 0 },
+    cancelled: { warning: 0, breach: 0 },
+    change_scheduled: { warning: 4, breach: 8 },
+    changed: { warning: 2, breach: 4 },
+    disconnection_scheduled: { warning: 4, breach: 8 },
+    disconnected: { warning: 2, breach: 4 },
+  }
+
+  function computeOrderSla(stateRaw: string, updatedAt?: string, createdAt?: string) {
+    const state = String(stateRaw || '').toLowerCase().trim().replace(/\s+/g, '_')
+    const isTerminal = state === 'completed' || state === 'cancelled'
+    const thresholds = slaThresholds[state] || (isTerminal ? { warning: 0, breach: 0 } : { warning: 4, breach: 8 })
+    const basisStr = updatedAt || createdAt
+    const basis = basisStr ? new Date(basisStr) : new Date()
+    const hours = Math.max(0, (Date.now() - basis.getTime()) / 3600000)
+    let slaStatus: 'ok' | 'warning' | 'breached' | 'unknown' = 'unknown'
+    if (thresholds.breach <= 0 && thresholds.warning <= 0) {
+      slaStatus = isTerminal ? 'ok' : 'unknown'
+    } else if (hours >= thresholds.breach) slaStatus = 'breached'
+    else if (hours >= thresholds.warning) slaStatus = 'warning'
+    else slaStatus = 'ok'
+    const dueAt = (thresholds.breach || thresholds.warning) > 0
+      ? new Date(basis.getTime() + (thresholds.breach || thresholds.warning) * 3600000).toISOString()
+      : undefined
+    return { slaStatus, slaHours: thresholds.breach || thresholds.warning || 0, elapsedHours: hours, dueAt }
+  }
+
   const filteredOnboarding = useMemo(() => {
     // Build quick lookup for customer details by id
     const customerById: Record<string, any> = {}
@@ -142,10 +180,12 @@ export default function OnboardingPage() {
       const lastName = c?.last_name || c?.lastName || ''
       const email = c?.email || ''
       const customerNumber = c?.customer_number || c?.customerNumber || (o.customer_id || '').slice(0, 8)
-      const slaStatus = slaByOnboardingId[o.id]
       const ord = resolveOrderForOnboarding(o)
       const orderType = (ord as any)?.order_type ?? (ord as any)?.orderType ?? 'new_install'
       const orderStatus = (ord as any)?.current_state ?? (ord as any)?.status ?? 'created'
+      const updatedAt = (ord as any)?.updated_at ?? (ord as any)?.updatedAt
+      const createdAt = (ord as any)?.created_at ?? (ord as any)?.createdAt
+      const computedSla = computeOrderSla(orderStatus, updatedAt, createdAt)
       const seq = getWorkflowSequence(orderType)
       const idx = Math.max(0, seq.indexOf(String(orderStatus).toLowerCase()))
       const pct = Math.round((idx / Math.max(1, seq.length - 1)) * 100)
@@ -167,11 +207,11 @@ export default function OnboardingPage() {
       startedAt: o.started_at || "",
       estimatedCompletion: "",
       status: String(orderStatus) === 'completed' ? 'completed' : 'in_progress',
-      slaStatus: slaStatus?.slaStatus || 'unknown',
-      slaHours: slaStatus?.slaHours || 0,
-      elapsedHours: slaStatus?.elapsedHours || 0,
-      dueAt: slaStatus?.dueAt,
-      slaAlertsCount: slaStatus?.slaAlertsCount || 0,
+      slaStatus: computedSla.slaStatus,
+      slaHours: computedSla.slaHours,
+      elapsedHours: computedSla.elapsedHours,
+      dueAt: computedSla.dueAt,
+      slaAlertsCount: 0,
     }});
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line no-console
