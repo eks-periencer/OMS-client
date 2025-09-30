@@ -30,8 +30,9 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
   const [slaProgress, setSlaProgress] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  const currentState = order.currentState || order.status
-  const stateChangedAt = order.updatedAt || order.createdAt
+  const rawState = (order.current_state || order.status || order.currentState || '').toString()
+  const currentState = rawState.toLowerCase().trim().replace(/\s+/g, '_')
+  const stateChangedAt = order.updated_at || order.updatedAt || order.created_at || order.createdAt
 
   useEffect(() => {
     const calculateSlaStatus = () => {
@@ -42,15 +43,14 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
 
       const now = new Date()
       const changedAt = new Date(stateChangedAt)
-      const hoursInState = (now.getTime() - changedAt.getTime()) / (1000 * 60 * 60)
+      const hoursInStateRaw = (now.getTime() - changedAt.getTime()) / (1000 * 60 * 60)
+      const hoursInState = Math.max(0, hoursInStateRaw)
 
       setTimeInState(hoursInState)
 
-      const threshold = slaThresholds[currentState as keyof typeof slaThresholds]
-      if (!threshold) {
-        setSlaStatus('unknown')
-        return
-      }
+      const isTerminal = currentState === 'completed' || currentState === 'cancelled'
+      const defaultThreshold = isTerminal ? { warning: 0, breach: 0 } : { warning: 4, breach: 8 }
+      const threshold = slaThresholds[currentState as keyof typeof slaThresholds] || defaultThreshold
 
       if (hoursInState >= threshold.breach) {
         setSlaStatus('breached')
@@ -60,7 +60,8 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
         setSlaProgress((hoursInState / threshold.breach) * 100)
       } else {
         setSlaStatus('ok')
-        setSlaProgress((hoursInState / threshold.warning) * 100)
+        const denom = threshold.warning > 0 ? threshold.warning : (threshold.breach > 0 ? threshold.breach : 1)
+        setSlaProgress((hoursInState / denom) * 100)
       }
     }
 
@@ -98,14 +99,21 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
   }
 
   const getSlaMessage = () => {
-    const threshold = slaThresholds[currentState as keyof typeof slaThresholds]
-    if (!threshold) return 'No SLA defined for this state'
+    const isTerminal = currentState === 'completed' || currentState === 'cancelled'
+    const defaultThreshold = isTerminal ? { warning: 0, breach: 0 } : { warning: 4, breach: 8 }
+    const threshold = slaThresholds[currentState as keyof typeof slaThresholds] || defaultThreshold
 
     switch (slaStatus) {
-      case 'ok':
-        return `Within SLA. ${threshold.warning - timeInState.toFixed(1)} hours until warning`
+      case 'ok': {
+        if (threshold.warning <= 0) return 'Within SLA'
+        const remaining = Math.max(0, threshold.warning - timeInState)
+        return `Within SLA. ${formatTime(remaining)} until warning`
+      }
       case 'warning':
-        return `SLA Warning. ${threshold.breach - timeInState.toFixed(1)} hours until breach`
+        {
+          const remaining = Math.max(0, threshold.breach - timeInState)
+          return `SLA Warning. ${formatTime(remaining)} until breach`
+        }
       case 'breached':
         return `SLA Breached by ${(timeInState - threshold.breach).toFixed(1)} hours`
       default:

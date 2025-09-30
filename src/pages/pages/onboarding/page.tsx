@@ -293,7 +293,18 @@ export default function OnboardingPage() {
           {/* SLA Metrics */}
           {metrics && (
             <div className="mb-6">
-              <SlaMetricsCard summary={metrics.summary} loading={metricsLoading} />
+              {(() => {
+                const totalVisible = liveStats.activeOnboarding;
+                const m = metrics.summary;
+                const summary = {
+                  total: totalVisible,
+                  warning: Math.min(m.warning, totalVisible),
+                  breached: Math.min(m.breached, totalVisible),
+                  reescalated: Math.min(m.reescalated, totalVisible),
+                  avgTimeInState: Number.isFinite(m.avgTimeInState) ? m.avgTimeInState : 0,
+                };
+                return <SlaMetricsCard summary={summary} loading={metricsLoading} />;
+              })()}
             </div>
           )}
 

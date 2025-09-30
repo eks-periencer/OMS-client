@@ -33,7 +33,8 @@ export function SlaMetricsCard({ summary, loading = false }: SlaMetricsCardProps
   }
 
   const { total, warning, breached, reescalated, avgTimeInState } = summary;
-  const healthy = total - warning - breached - reescalated;
+  const rawHealthy = total - warning - breached - reescalated;
+  const healthy = Math.max(0, Math.min(total, isFinite(rawHealthy) ? rawHealthy : 0));
 
   return (
     <Card>

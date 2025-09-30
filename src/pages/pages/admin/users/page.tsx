@@ -46,7 +46,7 @@ import {
   ResetPasswordConfirmationModal 
 } from "../../../../components/components/ui/confirmation-modal"
 import { LoadingOverlay } from "../../../../components/components/ui/loading-overlay"
-import { useLoading } from "../../../../hooks/use-loading"
+import { useLoading } from "../../../../../hooks/use-loading"
 
 const availableRoles = [
   { id: "1", name: "System Administrator", permissions: ["*"] },

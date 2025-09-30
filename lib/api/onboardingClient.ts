@@ -1,0 +1,25 @@
+import axios, { AxiosInstance } from 'axios';
+
+const base = (import.meta as any).env?.VITE_ONB_BASE_URL
+  || (typeof window !== 'undefined' ? (window as any).__ONB_API_BASE_URL__ : undefined)
+  || 'http://localhost:3004';
+
+export const onbClient: AxiosInstance = axios.create({
+  baseURL: `${base.replace(/\/+$/g, '')}/api/onboarding`,
+  timeout: 15000,
+  withCredentials: true,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+onbClient.interceptors.request.use((config) => {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('oms_access_token') : null;
+    if (token) {
+      config.headers = config.headers || {} as any;
+      (config.headers as any)['Authorization'] = `Bearer ${token}`;
+    }
+  } catch {}
+  return config;
+});
+
+
