@@ -6,6 +6,7 @@ import OnboardingPage from './pages/pages/onboarding/page.tsx'
 import OnboardingDetailsPage from './pages/pages/onboarding/[id]/page.tsx'
 import SettingsPage from './pages/pages/admin/settings/page.tsx'
 import ApplicationAdminPage from './pages/pages/application-admin/page.tsx'
+import ApplicationAdminDetailsPage from './pages/pages/application-admin/[id]/page.tsx'
 import FNOAdminPage from './pages/pages/fno/page.tsx'
 import FnoCreatePage from './pages/pages/fno/create/page.tsx'
 import Customers from './pages/pages/customers/page.tsx'
@@ -72,6 +73,11 @@ function App() {
           <Route path="/application-admin" element={
             <AuthGuard>
               <ApplicationAdminPage />
+            </AuthGuard>
+          } />
+          <Route path="/application-admin/:id" element={
+            <AuthGuard>
+              <ApplicationAdminDetailsPage />
             </AuthGuard>
           } />
           <Route path="/fno" element={

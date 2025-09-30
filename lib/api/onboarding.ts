@@ -1,4 +1,5 @@
 import api from './client';
+import { onbClient } from './onboardingClient';
 
 export interface OnboardingItem {
   id: string;
@@ -12,7 +13,7 @@ export interface OnboardingItem {
 }
 
 export async function listActiveOnboarding(): Promise<OnboardingItem[]> {
-  const { data: payload } = await api.get('/onboarding/active');
+  const { data: payload } = await onbClient.get('/active');
   // Unwrap common shapes: { success, data: [...] }, raw array, or { items: [...] }
   const rawList: any[] = Array.isArray((payload as any)?.data)
     ? (payload as any).data
@@ -43,7 +44,7 @@ export async function listActiveOnboarding(): Promise<OnboardingItem[]> {
 }
 
 export async function getOnboarding(id: string): Promise<OnboardingItem> {
-  const { data } = await api.get(`/onboarding/${id}`);
+  const { data } = await onbClient.get(`/${id}`);
   // Normalize common shapes and ensure current_step is present
   const raw = data?.data || data;
   return {
@@ -59,38 +60,38 @@ export async function getOnboarding(id: string): Promise<OnboardingItem> {
 }
 
 export async function assignOnboarding(id: string, assignedTo: string): Promise<void> {
-  await api.patch(`/onboarding/${id}/assign`, { assignedTo });
+  await onbClient.patch(`/${id}/assign`, { assignedTo });
 }
 
 export async function notifyOnboarding(
   id: string,
   payload: { type: 'welcome' | 'reminder' | 'completion' | 'trial-expiry'; email?: string; variables?: Record<string, any> }
 ): Promise<void> {
-  await api.post(`/onboarding/${id}/notify`, payload);
+  await onbClient.post(`/${id}/notify`, payload);
 }
 
 export async function initiateOnboarding(customerId: string, onboardingType: string = 'standard'): Promise<{ onboardingId: string }> {
-  const { data } = await api.post('/onboarding/initiate', { customerId, onboardingType });
+  const { data } = await onbClient.post('/initiate', { customerId, onboardingType });
   return data?.data || data;
 }
 
 export async function updateOnboardingStep(id: string, stepId: string, body: { notes?: string; metadata?: Record<string, any> } = {}): Promise<void> {
-  await api.put(`/onboarding/${id}/step/${stepId}/complete`, body);
+  await onbClient.put(`/${id}/step/${stepId}`, body);
 }
 
 export async function getOnboardingSteps(id: string): Promise<any[]> {
-  const { data } = await api.get(`/onboarding/${id}/steps`);
+  const { data } = await onbClient.get(`/${id}/steps`);
   return Array.isArray(data) ? data : (data?.data || []);
 }
 
 export async function getOnboardingTransitions(id: string): Promise<Array<{ fromState: string; toState: string; name?: string }>> {
-  const { data } = await api.get(`/onboarding/${id}/workflow/transitions`);
+  const { data } = await onbClient.get(`/${id}/workflow/transitions`);
   const payload = data?.data?.transitions || data?.transitions || [];
   return payload as Array<{ fromState: string; toState: string; name?: string }>;
 }
 
 export async function getOnboardingState(id: string): Promise<string> {
-  const { data } = await api.get(`/onboarding/${id}/workflow/state`);
+  const { data } = await onbClient.get(`/${id}/workflow/state`);
   return (data?.state || data?.data?.state || 'initiated') as string;
 }
 
@@ -117,8 +118,17 @@ export interface OnboardingMetrics {
 }
 
 export async function getOnboardingMetrics(): Promise<OnboardingMetrics> {
-  const { data } = await api.get('/onboarding/metrics');
-  return data?.data || data;
+  const { data } = await onbClient.get('/analytics/overview');
+  const payload = data?.data || data || {};
+  // Normalize to expected shape with summary
+  const summary = {
+    total: Number(payload.totalOnboardings ?? 0),
+    warning: Number(payload.warning ?? 0),
+    breached: Number(payload.breached ?? 0),
+    reescalated: Number(payload.reescalated ?? 0),
+    avgTimeInState: Number(payload.averageCompletionTime ?? payload.avgTimeInState ?? 0),
+  };
+  return { summary, slaStatuses: Array.isArray(payload.slaStatuses) ? payload.slaStatuses : [] } as OnboardingMetrics;
 }
 
 

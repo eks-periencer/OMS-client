@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Button } from "../../../components/components/ui/button"
 import { Input } from "../../../components/components/ui/input"
@@ -11,120 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/components/ui/tabs"
 import { Search, Inbox, Clock, AlertTriangle, CheckCircle, User, ExternalLink, Eye } from "lucide-react"
 import { Link } from "react-router-dom"
-
-// Mock application inbox data
-const mockApplications = [
-  {
-    id: "1",
-    order: {
-      id: "1",
-      orderNumber: "ORD-2025-001",
-      customer: {
-        firstName: "John",
-        lastName: "Smith",
-        email: "john@example.com",
-        phone: "+27123456789",
-      },
-      serviceType: "Fiber",
-      servicePackage: "Premium 100Mbps",
-      installationAddress: {
-        street: "123 Main Street",
-        city: "Cape Town",
-        province: "Western Cape",
-        postalCode: "8001",
-      },
-    },
-    fno: {
-      id: "2",
-      name: "Vumatel",
-      code: "VUM",
-      portalUrl: "https://portal.vumatel.co.za",
-    },
-    assignedTo: {
-      id: "1",
-      firstName: "Sarah",
-      lastName: "Admin",
-    },
-    priority: "high",
-    status: "pending",
-    dueDate: "2025-01-10T17:00:00Z",
-    createdAt: "2025-01-09T10:30:00Z",
-    agingHours: 6,
-    notes: "Customer requires installation between 9-11 AM",
-  },
-  {
-    id: "2",
-    order: {
-      id: "2",
-      orderNumber: "ORD-2025-002",
-      customer: {
-        firstName: "Emma",
-        lastName: "Wilson",
-        email: "emma@example.com",
-        phone: "+27987654321",
-      },
-      serviceType: "Fiber",
-      servicePackage: "Business 200Mbps",
-      installationAddress: {
-        street: "456 Business Ave",
-        city: "Johannesburg",
-        province: "Gauteng",
-        postalCode: "2000",
-      },
-    },
-    fno: {
-      id: "3",
-      name: "Frogfoot Networks",
-      code: "FF",
-      portalUrl: "https://portal.frogfoot.com",
-    },
-    assignedTo: {
-      id: "2",
-      firstName: "Mike",
-      lastName: "Processor",
-    },
-    priority: "urgent",
-    status: "in_progress",
-    dueDate: "2025-01-09T17:00:00Z",
-    createdAt: "2025-01-08T14:20:00Z",
-    agingHours: 24,
-    notes: "Business customer - priority processing required",
-  },
-  {
-    id: "3",
-    order: {
-      id: "3",
-      orderNumber: "ORD-2025-003",
-      customer: {
-        firstName: "David",
-        lastName: "Brown",
-        email: "david@example.com",
-        phone: "+27555666777",
-      },
-      serviceType: "Wireless",
-      servicePackage: "Standard 50Mbps",
-      installationAddress: {
-        street: "789 Oak Road",
-        city: "Durban",
-        province: "KwaZulu-Natal",
-        postalCode: "4000",
-      },
-    },
-    fno: {
-      id: "2",
-      name: "Vumatel",
-      code: "VUM",
-      portalUrl: "https://portal.vumatel.co.za",
-    },
-    assignedTo: null,
-    priority: "normal",
-    status: "pending",
-    dueDate: "2025-01-11T17:00:00Z",
-    createdAt: "2025-01-09T09:15:00Z",
-    agingHours: 8,
-    notes: null,
-  },
-]
+import { useApplicationInbox } from "../../../../hooks/useApplicationInbox"
 
 const mockCompletedApplications = [
   {
@@ -205,23 +92,25 @@ export default function ApplicationAdminPage() {
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [assigneeFilter, setAssigneeFilter] = useState("all")
 
-  const filteredApplications = mockApplications.filter((app) => {
+  const { items, loading, error, refetch } = useApplicationInbox()
+
+  const filteredApplications = useMemo(() => (items || []).filter((app: any) => {
     const matchesSearch =
-      app.order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${app.order.customer.firstName} ${app.order.customer.lastName}`
+      String(app.order_number || app.order?.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(app.customer_name || `${app.order?.customer?.firstName ?? ''} ${app.order?.customer?.lastName ?? ''}`)
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      app.fno.name.toLowerCase().includes(searchTerm.toLowerCase())
+      String(app.fno_name || app.fno?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter
-    const matchesPriority = priorityFilter === "all" || app.priority === priorityFilter
+    const matchesStatus = statusFilter === "all" || String(app.status) === statusFilter
+    const matchesPriority = priorityFilter === "all" || String(app.priority) === priorityFilter
     const matchesAssignee =
       assigneeFilter === "all" ||
-      (assigneeFilter === "me" && app.assignedTo?.id === "1") ||
-      (assigneeFilter === "unassigned" && !app.assignedTo)
+      (assigneeFilter === "me" && String(app.assigned_to) === "1") ||
+      (assigneeFilter === "unassigned" && !app.assigned_to)
 
     return matchesSearch && matchesStatus && matchesPriority && matchesAssignee
-  })
+  }), [items, searchTerm, statusFilter, priorityFilter, assigneeFilter])
 
   return (
     <div className="flex h-screen bg-background">
@@ -351,9 +240,10 @@ export default function ApplicationAdminPage() {
               {/* Applications Table */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Pending Applications ({filteredApplications.length})</CardTitle>
+                  <CardTitle>Pending Applications ({loading ? '...' : filteredApplications.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -369,49 +259,49 @@ export default function ApplicationAdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredApplications.map((app) => (
+                      {filteredApplications.map((app: any) => (
                         <TableRow key={app.id}>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{app.order.orderNumber}</div>
+                              <div className="font-medium">{app.order_number || app.order?.orderNumber}</div>
                               <div className="text-sm text-muted-foreground">
-                                {app.order.serviceType} - {app.order.servicePackage}
+                                {app.service_type || app.order?.serviceType} - {app.service_package || app.order?.servicePackage}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>
                               <div className="font-medium">
-                                {app.order.customer.firstName} {app.order.customer.lastName}
+                                {app.customer_name || `${app.order?.customer?.firstName ?? ''} ${app.order?.customer?.lastName ?? ''}`}
                               </div>
-                              <div className="text-sm text-muted-foreground">{app.order.customer.email}</div>
+                              <div className="text-sm text-muted-foreground">{app.customer_email || app.order?.customer?.email}</div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <div>
-                                <div className="font-medium">{app.fno.name}</div>
-                                <div className="text-sm text-muted-foreground">{app.fno.code}</div>
+                                <div className="font-medium">{app.fno_name || app.fno?.name}</div>
+                                <div className="text-sm text-muted-foreground">{app.fno_code || app.fno?.code}</div>
                               </div>
-                              <Link href={app.fno.portalUrl} target="_blank">
+                              <a href={app.fno_portal_url || app.fno?.portalUrl} target="_blank" rel="noopener noreferrer">
                                 <Button variant="ghost" size="sm">
                                   <ExternalLink className="h-3 w-3" />
                                 </Button>
-                              </Link>
+                              </a>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={getPriorityColor(app.priority)}>{app.priority}</Badge>
+                            <Badge className={getPriorityColor(String(app.priority))}>{app.priority}</Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge className={getStatusColor(app.status)}>{app.status.replace("_", " ")}</Badge>
+                            <Badge className={getStatusColor(String(app.status))}>{String(app.status).replace("_", " ")}</Badge>
                           </TableCell>
                           <TableCell>
-                            {app.assignedTo ? (
+                            {app.assigned_to ? (
                               <div className="flex items-center space-x-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm">
-                                  {app.assignedTo.firstName} {app.assignedTo.lastName}
+                                  User {app.assigned_to}
                                 </span>
                               </div>
                             ) : (
@@ -419,15 +309,15 @@ export default function ApplicationAdminPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className={`text-sm font-medium ${getAgingColor(app.agingHours)}`}>
-                              {app.agingHours}h
+                            <div className={`text-sm font-medium ${getAgingColor(Number(app.aging_hours ?? app.agingHours ?? 0))}`}>
+                              {Number(app.aging_hours ?? app.agingHours ?? 0)}h
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{new Date(app.dueDate).toLocaleDateString()}</div>
+                            <div className="text-sm">{app.due_date ? new Date(app.due_date).toLocaleDateString() : (app.dueDate ? new Date(app.dueDate).toLocaleDateString() : '-')}</div>
                           </TableCell>
                           <TableCell>
-                            <Link href={`/application-admin/${app.id}`}>
+                            <Link to={`/application-admin/${app.id}`}>
                               <Button variant="ghost" size="sm">
                                 <Eye className="mr-2 h-4 w-4" />
                                 Process

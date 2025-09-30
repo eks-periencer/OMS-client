@@ -6,8 +6,8 @@ import { Textarea } from '../ui/textarea'
 import { Button } from '../ui/button'
 import { Loader2, Send } from 'lucide-react'
 import Swal from 'sweetalert2'
-import { useOrders } from '../../../../hooks/useOrders'
-import { listFNOs, submitOrderToFNO, type FNOItem } from '../../../../lib/api/FNO.ts'
+import { useOrders } from '@hooks/useOrders'
+import { listFNOs, submitOrderToFNO, type FNOItem } from '@lib/api/FNO.ts'
 
 interface OrderFnoSubmissionFormProps {
   order: any
@@ -81,15 +81,17 @@ export function OrderFnoSubmissionForm({ order, onUpdate }: OrderFnoSubmissionFo
       if (!installStreet || !installCity || !installPostal) throw new Error('Missing installation address')
       if (!contactName || !contactEmail) throw new Error('Missing customer contact details')
 
-      // Save FNO details to the order
-      await updateOrder(order.id, {
-        fnoId: fnoId || order.fno_id,
-        fnoReference: fnoReference || order.fno_reference,
-        submissionNotes: notes
-      } as any)
-
-      // Submit to FNO (queues manual app or simulates API submission)
+      // Submit to FNO first (backend will link FNO and advance state)
       await submitOrderToFNO(fnoId, order.id, submissionType)
+
+      // Optionally persist reference/notes after successful submission (avoid status side-effects)
+      if (fnoReference || notes) {
+        await updateOrder(order.id, {
+          // Do not send fnoId here to avoid premature state transitions
+          fnoReference: fnoReference || order.fno_reference,
+          submissionNotes: notes
+        } as any)
+      }
 
       await Swal.fire({
         icon: 'success',
