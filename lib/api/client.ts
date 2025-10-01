@@ -1,9 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
 
 // Resolve API base URL from Vite env with sane defaults
+// const apiBaseUrl = 'http://localhost:3003';
+
 const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL
   || (typeof window !== 'undefined' ? window.__OMS_API_BASE_URL__ : undefined)
-  || 'http://localhost:3003';
+  || '';
 
 // Create a shared axios instance
 export const apiClient: AxiosInstance = axios.create({
@@ -14,6 +16,9 @@ export const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// Debug log for API base URL
+console.log("🌐 API Client Base URL:", apiBaseUrl);
 
 // Allow consumers to set/update bearer token
 export function setAuthToken(token?: string): void {

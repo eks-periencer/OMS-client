@@ -134,20 +134,35 @@ export function Sidebar() {
     })
   }, [READ_EXPIRY_DAYS])
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const readMapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
+      const readMap: Record<string, string> = readMapRaw ? JSON.parse(readMapRaw) : {}
+      const items = await getMyNotifications()
+      const withRead = items.map((n) => ({ ...n, readAt: readMap[n._id] || null }))
+      setNotifications(purgeExpired(withRead))
+    } catch (e) {
+      console.error("Failed to fetch notifications", e)
+    }
+  }, [NOTIFICATION_STORAGE_KEY, purgeExpired])
+
   useEffect(()=>{
     const load = async () => {
       try {
-        const readMapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
-        const readMap: Record<string, string> = readMapRaw ? JSON.parse(readMapRaw) : {}
-        const items = await getMyNotifications()
-        const withRead = items.map((n) => ({ ...n, readAt: readMap[n._id] || null }))
-        setNotifications(purgeExpired(withRead))
+        await loadNotifications()
       } catch (e) {
         console.error("Failed to fetch notifications", e)
       }
     }
     load()
-  }, [purgeExpired])
+  }, [loadNotifications])
+
+  // Listen for global refresh events triggered by other parts of the app
+  useEffect(() => {
+    const handler = () => { loadNotifications().catch(() => {}) }
+    window.addEventListener('oms:notifications:refresh', handler)
+    return () => window.removeEventListener('oms:notifications:refresh', handler)
+  }, [loadNotifications])
   
   
   const user = useSelector((state: RootState)=> state.authentication.user)
