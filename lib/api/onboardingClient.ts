@@ -5,7 +5,7 @@ const base = (import.meta as any).env?.VITE_ONB_BASE_URL
   || 'https://oms-server-ntlv.onrender.com';
 
 export const onbClient: AxiosInstance = axios.create({
-  baseURL: `${base.replace(/\/+$/g, '')}/api/onboarding`,
+  baseURL: `${base.replace(/\/+$/g, '')}/onboarding`,
   timeout: 15000,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' }
