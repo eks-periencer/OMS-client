@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 
 const base = (import.meta as any).env?.VITE_ONB_BASE_URL
   || (typeof window !== 'undefined' ? (window as any).__ONB_API_BASE_URL__ : undefined)
-  || 'http://localhost:3004';
+  || 'https://oms-server-ntlv.onrender.com';
 
 export const onbClient: AxiosInstance = axios.create({
   baseURL: `${base.replace(/\/+$/g, '')}/api/onboarding`,
