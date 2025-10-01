@@ -34,6 +34,20 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
   const currentState = rawState.toLowerCase().trim().replace(/\s+/g, '_')
   const stateChangedAt = order.updated_at || order.updatedAt || order.created_at || order.createdAt
 
+  const parseUtc = (val: any) => {
+    if (!val) return null
+    try {
+      if (val instanceof Date) return val
+      const s = String(val)
+      const hasTz = /z$|[\+\-]\d{2}:?\d{2}$/i.test(s)
+      const normalized = hasTz ? s : (s.endsWith('Z') ? s : `${s}Z`)
+      const d = new Date(normalized)
+      return isNaN(d.getTime()) ? null : d
+    } catch {
+      return null
+    }
+  }
+
   useEffect(() => {
     const calculateSlaStatus = () => {
       if (!stateChangedAt || !currentState) {
@@ -41,9 +55,9 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
         return
       }
 
-      const now = new Date()
-      const changedAt = new Date(stateChangedAt)
-      const hoursInStateRaw = (now.getTime() - changedAt.getTime()) / (1000 * 60 * 60)
+      const nowMs = Date.now()
+      const changedAt = parseUtc(stateChangedAt) || new Date()
+      const hoursInStateRaw = (nowMs - changedAt.getTime()) / (1000 * 60 * 60)
       const hoursInState = Math.max(0, hoursInStateRaw)
 
       setTimeInState(hoursInState)
@@ -115,7 +129,7 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
           return `SLA Warning. ${formatTime(remaining)} until breach`
         }
       case 'breached':
-        return `SLA Breached by ${(timeInState - threshold.breach).toFixed(1)} hours`
+        return `SLA Breached by ${formatTime(timeInState - threshold.breach)}`
       default:
         return 'SLA status unknown'
     }
@@ -123,13 +137,22 @@ export function OrderSlaMonitor({ order }: OrderSlaMonitorProps) {
 
   const formatTime = (hours: number) => {
     if (hours < 1) {
-      return `${Math.round(hours * 60)} minutes`
+      const minutes = Math.round(hours * 60)
+      return `${minutes} min${minutes !== 1 ? 's' : ''}`
     } else if (hours < 24) {
-      return `${hours.toFixed(1)} hours`
+      const wholeHours = Math.floor(hours)
+      const minutes = Math.round((hours - wholeHours) * 60)
+      if (minutes === 0) {
+        return `${wholeHours} hour${wholeHours !== 1 ? 's' : ''}`
+      }
+      return `${wholeHours}h ${minutes}m`
     } else {
       const days = Math.floor(hours / 24)
-      const remainingHours = hours % 24
-      return `${days}d ${remainingHours.toFixed(1)}h`
+      const remainingHours = Math.floor(hours % 24)
+      if (remainingHours === 0) {
+        return `${days} day${days !== 1 ? 's' : ''}`
+      }
+      return `${days}d ${remainingHours}h`
     }
   }
 
