@@ -59,7 +59,7 @@ export default function CreateOrderPage() {
 
   // Build a dynamic Google Maps embed URL from the address inputs
   const addressQuery = [street, city, province, postalCode].filter(Boolean).join(" ")
-  const defaultMapQuery = "Cape Town, South Africa"
+  const defaultMapQuery = "Johannesburg, South Africa"
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(addressQuery || defaultMapQuery)}&output=embed`
 
   const handleSubmit = async (e: React.FormEvent) => {

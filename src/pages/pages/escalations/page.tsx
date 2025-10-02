@@ -118,6 +118,39 @@ export default function EscalationsPage() {
     priority: "medium"
   })
 
+  // Manual options for the Create dialog
+  const [manualOptionsLoading, setManualOptionsLoading] = useState(false)
+  const [manualOptionsError, setManualOptionsError] = useState<string | null>(null)
+  const [manualOrders, setManualOrders] = useState<Array<{ id: string; order_number: string; customer_name: string }>>([])
+  const [manualAssignees, setManualAssignees] = useState<Array<{ id: string; name: string; role: string; openEscalations: number }>>([])
+
+  // Load orders and assignees when Create dialog opens
+  useEffect(() => {
+    const loadManualOptions = async () => {
+      if (!isCreateDialogOpen) return
+      try {
+        setManualOptionsLoading(true)
+        setManualOptionsError(null)
+        setManualOrders([])
+        setManualAssignees([])
+        const resp = await escalationApi.getManualOptions({ limit: 25 })
+        if (resp?.success) {
+          const orders = (resp.data?.orders || []).map(o => ({ id: o.id, order_number: o.order_number, customer_name: o.customer_name }))
+          const assignees = (resp.data?.assignees || []).map(a => ({ id: a.id, name: a.name, role: a.role, openEscalations: a.openEscalations }))
+          setManualOrders(orders)
+          setManualAssignees(assignees)
+        } else {
+          setManualOptionsError('Failed to load options')
+        }
+      } catch (e: any) {
+        setManualOptionsError(e?.response?.data?.error?.message || e?.message || 'Failed to load options')
+      } finally {
+        setManualOptionsLoading(false)
+      }
+    }
+    loadManualOptions()
+  }, [isCreateDialogOpen])
+
   // Test backend connectivity
   const testBackendConnectivity = async () => {
     try {
@@ -582,21 +615,35 @@ export default function EscalationsPage() {
 
   const handleCreateEscalation = async () => {
     try {
-      if (!createForm.orderId || !createForm.escalationReason || !createForm.escalatedTo) {
-        toast({
-          title: "Error",
-          description: "Please fill in all required fields",
-          variant: "destructive"
-        })
-        try { await Swal.fire({ icon: 'error', title: 'Missing fields', text: 'Please fill in all required fields.' }) } catch {}
+      // Validate required fields
+      if (!createForm.orderId || !createForm.escalationReason) {
+        toast({ title: "Error", description: "Order ID and reason are required", variant: "destructive" })
+        try { await Swal.fire({ icon: 'error', title: 'Missing fields', text: 'Order ID and escalation reason are required.' }) } catch {}
+        return
+      }
+
+      // Accept either UUID or OMS order number like ORD-XXXX-XXXX
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      const orderNumRegex = /^ORD-[A-Z0-9-]+$/i
+      const orderIdTrimmed = createForm.orderId.trim()
+      if (!(uuidRegex.test(orderIdTrimmed) || orderNumRegex.test(orderIdTrimmed))) {
+        const msg = 'Enter a valid Order ID (UUID) or Order Number like ORD-XXXX.'
+        toast({ title: "Invalid Order Identifier", description: msg, variant: "destructive" })
+        try { await Swal.fire({ icon: 'error', title: 'Invalid Order Identifier', text: msg }) } catch {}
+        return
+      }
+      if (createForm.escalatedTo && createForm.escalatedTo.trim() && !uuidRegex.test(createForm.escalatedTo.trim())) {
+        toast({ title: "Invalid User ID", description: "Escalate To must be a valid UUID", variant: "destructive" })
+        try { await Swal.fire({ icon: 'error', title: 'Invalid User ID', text: 'Escalate To must be a valid UUID.' }) } catch {}
         return
       }
 
       const response = await escalationApi.createEscalation({
-        orderId: createForm.orderId,
-        escalationReason: createForm.escalationReason,
+        orderId: orderIdTrimmed,
+        escalationReason: createForm.escalationReason.trim(),
         escalationLevel: 1,
-        escalatedTo: createForm.escalatedTo,
+        // If empty, omit to allow backend to treat as NULL
+        escalatedTo: createForm.escalatedTo && createForm.escalatedTo.trim() ? createForm.escalatedTo.trim() : (undefined as any),
         priority: createForm.priority
       })
 
@@ -723,22 +770,55 @@ export default function EscalationsPage() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="order">Order ID</Label>
-                <Input
-                  id="order"
-                  placeholder="Enter order ID to escalate"
-                  value={createForm.orderId}
-                  onChange={(e) => setCreateForm(prev => ({ ...prev, orderId: e.target.value }))}
-                />
+                <Label htmlFor="order">Order</Label>
+                {manualOptionsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading orders…</div>
+                ) : manualOrders.length > 0 ? (
+                  <Select value={createForm.orderId} onValueChange={(value) => setCreateForm(prev => ({ ...prev, orderId: value }))}>
+                    <SelectTrigger id="order">
+                      <SelectValue placeholder="Select an order" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {manualOrders.map(o => (
+                        <SelectItem key={o.id} value={o.id}>{o.order_number} – {o.customer_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="order"
+                    placeholder="Enter order ID to escalate"
+                    value={createForm.orderId}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, orderId: e.target.value }))}
+                  />
+                )}
+                {manualOptionsError && <div className="text-xs text-destructive">{manualOptionsError}</div>}
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="escalateTo">Escalate To (User ID)</Label>
-                <Input
-                  id="escalateTo"
-                  placeholder="Enter user ID to escalate to"
-                  value={createForm.escalatedTo}
-                  onChange={(e) => setCreateForm(prev => ({ ...prev, escalatedTo: e.target.value }))}
-                />
+                <Label htmlFor="escalateTo">Escalate To</Label>
+                {manualOptionsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading assignees…</div>
+                ) : manualAssignees.length > 0 ? (
+                  <Select value={createForm.escalatedTo} onValueChange={(value) => setCreateForm(prev => ({ ...prev, escalatedTo: value }))}>
+                    <SelectTrigger id="escalateTo">
+                      <SelectValue placeholder="Select a user" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {manualAssignees
+                        .sort((a, b) => a.openEscalations - b.openEscalations)
+                        .map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.name} ({u.role}) – open: {u.openEscalations}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="escalateTo"
+                    placeholder="Enter user ID to escalate to"
+                    value={createForm.escalatedTo}
+                    onChange={(e) => setCreateForm(prev => ({ ...prev, escalatedTo: e.target.value }))}
+                  />
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="priority">Priority</Label>

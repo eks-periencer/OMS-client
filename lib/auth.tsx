@@ -21,9 +21,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing session on mount
-    const token = localStorage.getItem("accessToken")
-    const userData = localStorage.getItem("user")
+    // Check for existing session on mount (support both legacy and current keys)
+    const token = localStorage.getItem("accessToken") || localStorage.getItem("oms_access_token")
+    const userData = localStorage.getItem("user") || localStorage.getItem("oms_user_data")
 
     if (token && userData) {
       try {
@@ -72,8 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const mockToken = "mock-jwt-token"
 
+      // Store under both current and legacy keys for compatibility
       localStorage.setItem("accessToken", mockToken)
       localStorage.setItem("user", JSON.stringify(mockUser))
+      localStorage.setItem("oms_access_token", mockToken)
+      localStorage.setItem("oms_user_data", JSON.stringify(mockUser))
       setUser(mockUser)
     } catch (error) {
       throw new Error("Login failed")
@@ -85,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem("accessToken")
     localStorage.removeItem("user")
+    localStorage.removeItem("oms_access_token")
+    localStorage.removeItem("oms_user_data")
     setUser(null)
   }
 
