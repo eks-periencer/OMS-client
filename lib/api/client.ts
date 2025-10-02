@@ -5,7 +5,7 @@ import axios, { AxiosInstance } from 'axios';
 
 const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL
   || (typeof window !== 'undefined' ? window.__OMS_API_BASE_URL__ : undefined)
-  || '';
+  || 'http://localhost:3003';
 
 // Create a shared axios instance
 export const apiClient: AxiosInstance = axios.create({
@@ -32,10 +32,13 @@ export function setAuthToken(token?: string): void {
 // Attach Authorization from localStorage on each request (keeps it fresh)
 apiClient.interceptors.request.use((config) => {
   try {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('oms_access_token') : null;
-    if (token) {
-      config.headers = config.headers || {};
-      (config.headers as any)['Authorization'] = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+      // Support both legacy and current token keys
+      const token = localStorage.getItem('oms_access_token') || localStorage.getItem('accessToken');
+      if (token) {
+        config.headers = config.headers || {};
+        (config.headers as any)['Authorization'] = `Bearer ${token}`;
+      }
     }
   } catch {}
   return config;

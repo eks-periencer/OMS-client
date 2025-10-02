@@ -90,6 +90,30 @@ export interface EligibleAssignee {
   recent_assignments_24h: number
 }
 
+export interface ManualEscalationOptionsResponse {
+  success: boolean
+  data: {
+    orders: Array<{
+      id: string
+      order_number: string
+      customer_id: string
+      customer_name: string
+      customer_email: string
+      priority: string
+      order_type: string
+      current_state: string | null
+      created_at: string
+    }>
+    assignees: Array<{
+      id: string
+      name: string
+      email: string
+      role: string
+      openEscalations: number
+    }>
+  }
+}
+
 // API Functions
 export const escalationApi = {
   // Get escalations assigned to current user
@@ -489,6 +513,17 @@ export const escalationApi = {
     }
   }> {
     const response = await apiClient.post(`/escalation/workflow/${escalationId}/transition`, data)
+    return response.data
+  },
+
+  // Manual escalation helper: fetch orders and eligible assignees
+  async getManualOptions(params?: { q?: string; limit?: number }): Promise<ManualEscalationOptionsResponse> {
+    const queryParams = new URLSearchParams()
+    if (params?.q) queryParams.append('q', params.q)
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    const qs = queryParams.toString()
+    const url = `/escalation/manual/options${qs ? `?${qs}` : ''}`
+    const response = await apiClient.get(url)
     return response.data
   }
 }
