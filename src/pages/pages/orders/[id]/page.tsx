@@ -426,7 +426,7 @@ export default function OrderDetailsPage() {
             {validTransitions.some(t => ['installation_scheduled','change_scheduled','disconnection_scheduled'].includes(String(t.toState).toLowerCase())) && (
               <TabsContent value="schedule">
                 <OrderScheduleForm order={order} onUpdate={refreshOrder} />
-              </TabsContent>
+            </TabsContent>
             )}
           </Tabs>
         </div>
