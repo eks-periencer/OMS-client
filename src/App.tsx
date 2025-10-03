@@ -17,9 +17,10 @@ import LoginPage from './pages/pages/login/page.tsx'
 import Escalations from './pages/pages/escalations/page.tsx'
 import OrderCreate from './pages/pages/orders/create/page.tsx'
 import OrderDetailsPage from './pages/pages/orders/[id]/page.tsx'
-import CustomerCreate from './pages/pages/customers/create/page.tsx'
+import CustomerCreate from './pages/pages/customers/create/page'
 import CustomerDetailsPage from './pages/pages/customers/[id]/page.tsx'
 import EditCustomerPage from './pages/pages/customers/[id]/edit/page.tsx'
+import PaymentSuccessPage from './pages/pages/payment/success/page.tsx'
 import { Toaster } from './components/components/ui/sonner'
 import { AuthGuard } from './components/AuthGuard'
 // import RegisterPage from './pages/pages/register/page.tsx'
@@ -144,6 +145,9 @@ function App() {
             <AuthGuard>
               <EditCustomerPage/>
             </AuthGuard>
+          } />
+          <Route path='/payment/success' element={
+            <PaymentSuccessPage />
           } />
         </Routes>
         <Toaster />

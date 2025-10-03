@@ -9,6 +9,7 @@ import { Package, Users, AlertTriangle, Clock, Plus } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
 import { getDashboard, getDashboardSummary, getPendingEscalations, getRecentOrders, type DashboardEscalation, type DashboardOrder, type DashboardSummary } from "../../../../lib/api/dashboard"
+import { listOrders, type OrderItem } from "../../../../lib/api/orders"
 
 // Live state
 const initialSummary: DashboardSummary = { totalOrders: 0, activeOrders: 0, escalations: 0, trialCustomers: 0, ordersToday: 0 }
@@ -54,6 +55,7 @@ export default function DashboardPage() {
   const [escalations, setEscalations] = useState<DashboardEscalation[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -64,8 +66,8 @@ export default function DashboardPage() {
         const combined = await getDashboard()
         if (!mounted) return
         setSummary(combined.summary)
-        setOrders(combined.recentOrders)
         setEscalations(combined.pendingEscalations)
+        setLastRefreshedAt(new Date())
       } catch (e: any) {
         if (!mounted) return
         // Avoid cascading 404s: only use the combined endpoint for now
@@ -81,6 +83,54 @@ export default function DashboardPage() {
     })()
     return () => { mounted = false }
   }, [])
+
+  // Live-refresh recent orders from GET /orders (top 5 by created_at desc) every 15s
+  useEffect(() => {
+    let mounted = true
+    const refreshRecent = async () => {
+      try {
+        const all = await listOrders()
+        const top5 = (all || []).sort((a: OrderItem, b: OrderItem) => new Date(b.created_at || b.createdAt || '').getTime() - new Date(a.created_at || a.createdAt || '').getTime()).slice(0, 5)
+        const latest: DashboardOrder[] = top5.map(o => ({
+          id: o.id,
+          orderNumber: String(o.order_number || ''),
+          priority: (o.priority as any) || 'normal',
+          customerName: o.customer ? `${o.customer.first_name || ''} ${o.customer.last_name || ''}`.trim() : undefined,
+          serviceType: String(o.service_type || (o.service_details as any)?.serviceType || 'Unknown'),
+          status: String(o.current_state || 'created'),
+          createdAt: String(o.created_at || '')
+        }))
+        if (!mounted) return
+        // Normalize defensive defaults
+        const normalized = (latest || []).map(o => ({
+          ...o,
+          status: String(o.status || '').toLowerCase() || 'created',
+          serviceType: o.serviceType || 'Unknown',
+          priority: (o.priority as any) || 'normal'
+        }))
+        setOrders(normalized)
+        setLastRefreshedAt(new Date())
+      } catch (e) {
+        // Ignore transient errors during background refresh
+      }
+    }
+    const id = setInterval(refreshRecent, 15000)
+    // Fire once on mount for quicker correction if cache was stale
+    refreshRecent()
+    return () => { mounted = false; clearInterval(id) }
+  }, [])
+
+  const formatWhen = (iso?: string) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    const diff = Math.max(0, Date.now() - d.getTime())
+    const mins = Math.round(diff / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    const rem = mins % 60
+    return rem ? `${hours}h ${rem}m ago` : `${hours}h ago`
+  }
   
   return (
     <div className="flex h-screen bg-background">
@@ -155,7 +205,9 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>Latest orders in the system</CardDescription>
+                <CardDescription>
+                  Latest orders in the system {lastRefreshedAt ? `· refreshed ${formatWhen(lastRefreshedAt.toISOString())}` : ''}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {error && (
@@ -170,9 +222,9 @@ export default function DashboardPage() {
                           <Badge className={getPriorityColor(String(order.priority))}>{String(order.priority)}</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">{order.customerName || (order as any).customer}</p>
-                        <p className="text-xs text-muted-foreground">{order.serviceType}</p>
+                        <p className="text-xs text-muted-foreground">{order.serviceType} • {formatWhen(order.createdAt)}</p>
                       </div>
-                      <Badge className={getStatusColor(order.status)}>{order.status.replace(/_/g, " ")}</Badge>
+                      <Badge className={getStatusColor(order.status)}>{(order.status || '').replace(/_/g, " ") || 'created'}</Badge>
                     </div>
                   ))}
                   {!isLoading && orders.length === 0 && (
