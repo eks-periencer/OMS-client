@@ -15,6 +15,7 @@ import { OrderWorkflowManager } from "../../../../components/components/orders/O
 import { OrderSlaMonitor } from "../../../../components/components/orders/OrderSlaMonitor"
 import { OrderEnrichmentForm } from "../../../../components/components/orders/OrderEnrichmentForm"
 import { OrderFnoSubmissionForm } from "../../../../components/components/orders/OrderFnoSubmissionForm"
+import { OrderScheduleForm } from "../../../../components/components/orders/OrderScheduleForm"
 import Swal from "sweetalert2"
 
 function getStatusColor(status: string) {
@@ -66,9 +67,10 @@ function getPriorityColor(priority: string) {
 export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { getOrder, getOrderWorkflowHistory } = useOrders()
+  const { getOrder, getOrderWorkflowHistory, getOrderWorkflowState } = useOrders()
   const [order, setOrder] = useState<any>(null)
   const [workflowHistory, setWorkflowHistory] = useState<any[]>([])
+  const [validTransitions, setValidTransitions] = useState<Array<{ toState: string; name?: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -76,9 +78,10 @@ export default function OrderDetailsPage() {
     if (!id) return
     
     try {
-      const [orderDataRaw, historyData] = await Promise.all([
+      const [orderDataRaw, historyData, wfState] = await Promise.all([
         getOrder(id),
-        getOrderWorkflowHistory(id)
+        getOrderWorkflowHistory(id),
+        getOrderWorkflowState(id)
       ])
       
       let orderData = orderDataRaw
@@ -93,6 +96,7 @@ export default function OrderDetailsPage() {
       }
       setOrder(orderData)
       setWorkflowHistory(historyData || [])
+      setValidTransitions(Array.isArray(wfState?.transitions) ? wfState.transitions.map((t: any) => ({ toState: t.toState, name: t.name })) : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load order")
     }
@@ -238,8 +242,15 @@ export default function OrderDetailsPage() {
               <TabsTrigger value="details">Order Details</TabsTrigger>
               <TabsTrigger value="history">State History</TabsTrigger>
               <TabsTrigger value="workflow">Workflow</TabsTrigger>
-              <TabsTrigger value="enrichment" disabled={order.current_state !== 'validated'}>Enrichment</TabsTrigger>
-              <TabsTrigger value="fno" disabled={order.current_state !== 'enriched'}>FNO Submission</TabsTrigger>
+              {validTransitions.some(t => String(t.toState).toLowerCase() === 'enriched') && (
+                <TabsTrigger value="enrichment">Enrichment</TabsTrigger>
+              )}
+              {validTransitions.some(t => String(t.toState).toLowerCase() === 'fno_submitted') && (
+                <TabsTrigger value="fno">FNO Submission</TabsTrigger>
+              )}
+              {validTransitions.some(t => ['installation_scheduled','change_scheduled','disconnection_scheduled'].includes(String(t.toState).toLowerCase())) && (
+                <TabsTrigger value="schedule">Schedule</TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="details" className="space-y-6">
@@ -379,7 +390,7 @@ export default function OrderDetailsPage() {
                           </div>
                             <p className="text-sm mt-1">{entry.reason || entry.transitionName || "No reason provided"}</p>
                           <p className="text-xs text-muted-foreground">
-                              Actor: {entry.actorId || "System"}
+                              Actor: {entry.actorName || entry.actor || entry.actorId || "System"}
                           </p>
                         </div>
                       </div>
@@ -400,13 +411,23 @@ export default function OrderDetailsPage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="enrichment">
-              <OrderEnrichmentForm order={order} onUpdate={refreshOrder} />
-            </TabsContent>
+            {validTransitions.some(t => String(t.toState).toLowerCase() === 'enriched') && (
+              <TabsContent value="enrichment">
+                <OrderEnrichmentForm order={order} onUpdate={refreshOrder} />
+              </TabsContent>
+            )}
 
-            <TabsContent value="fno">
-              <OrderFnoSubmissionForm order={order} onUpdate={refreshOrder} />
-            </TabsContent>
+            {validTransitions.some(t => String(t.toState).toLowerCase() === 'fno_submitted') && (
+              <TabsContent value="fno">
+                <OrderFnoSubmissionForm order={order} onUpdate={refreshOrder} />
+              </TabsContent>
+            )}
+
+            {validTransitions.some(t => ['installation_scheduled','change_scheduled','disconnection_scheduled'].includes(String(t.toState).toLowerCase())) && (
+              <TabsContent value="schedule">
+                <OrderScheduleForm order={order} onUpdate={refreshOrder} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </main>

@@ -62,6 +62,27 @@ export default function CreateOrderPage() {
   const defaultMapQuery = "Johannesburg, South Africa"
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(addressQuery || defaultMapQuery)}&output=embed`
 
+  // South Africa packages (VAT-inclusive)
+  const fiberPackages = [
+    { value: "20/10", label: "20/10 Mbps — R399/mo (Self R0 / Pro R799)", install: { self: true, proOnly: false } },
+    { value: "50/50", label: "50/50 Mbps — R599/mo (Self R0 / Pro R899)", install: { self: true, proOnly: false } },
+    { value: "100/50", label: "100/50 Mbps — R749/mo (Self R0 / Pro R999)", install: { self: true, proOnly: false } },
+    { value: "200/100", label: "200/100 Mbps — R999/mo (Pro R1,199)", install: { self: false, proOnly: true } },
+    { value: "500/250", label: "500/250 Mbps — R1,299/mo (Pro R1,499)", install: { self: false, proOnly: true } },
+    { value: "1000/500", label: "1000/500 Mbps — R1,599/mo (Pro R1,699)", install: { self: false, proOnly: true } }
+  ] as const
+
+  const wirelessPackages = [
+    { value: "25/5", label: "25/5 Mbps — R299/mo (Install R699 incl. CPE)", install: { self: false, proOnly: true } },
+    { value: "50/10", label: "50/10 Mbps — R449/mo (Install R899)", install: { self: false, proOnly: true } },
+    { value: "100/20", label: "100/20 Mbps — R699/mo (Install R1,099)", install: { self: false, proOnly: true } }
+  ] as const
+
+  const currentPackageMeta = useMemo(() => {
+    const list = serviceType === 'fiber' ? fiberPackages : serviceType === 'wireless' ? wirelessPackages : []
+    return list.find(p => p.value === servicePackage)
+  }, [serviceType, servicePackage])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -77,6 +98,10 @@ export default function CreateOrderPage() {
       const allowedOrderTypes = new Set(['new_install', 'service_change', 'disconnect'])
       const finalOrderType = allowedOrderTypes.has(normalizedOrderType) ? normalizedOrderType : 'new_install'
 
+      const installationType = currentPackageMeta
+        ? (currentPackageMeta.install.self && !currentPackageMeta.install.proOnly ? 'self_install' : 'professional_install')
+        : 'professional_install'
+
       const orderData = {
         customerId,
         orderType: finalOrderType,
@@ -88,9 +113,9 @@ export default function CreateOrderPage() {
           postalCode
         },
         serviceDetails: {
-          serviceType, // This is the actual service type (fiber, wireless, hybrid)
+          serviceType,
           bandwidth: servicePackage,
-          installationType: "standard"
+          installationType
         },
         notes: notes || undefined
       }
@@ -308,27 +333,32 @@ export default function CreateOrderPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="serviceType">Service Type *</Label>
-                    <Select value={serviceType} onValueChange={setServiceType} required>
+                    <Select value={serviceType} onValueChange={(v) => { setServiceType(v); setServicePackage("") }} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Select service type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="fiber">Fiber Optic</SelectItem>
                         <SelectItem value="wireless">Wireless</SelectItem>
-                        <SelectItem value="hybrid">Hybrid Solution</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="servicePackage">Service Package *</Label>
-                    <Input
-                      id="servicePackage"
-                      placeholder="e.g., Premium 100Mbps"
-                      value={servicePackage}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setServicePackage(e.target.value)}
-                      required
-                    />
+                    <Select value={servicePackage} onValueChange={setServicePackage} required disabled={!serviceType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={serviceType ? "Select a package" : "Select service type first"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(serviceType === 'fiber' ? fiberPackages : serviceType === 'wireless' ? wirelessPackages : []).map(pkg => (
+                          <SelectItem key={pkg.value} value={pkg.value}>{pkg.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {serviceType === 'fiber' ? 'ONT/router: R99/mo rental or R1,299 once-off' : serviceType === 'wireless' ? 'Install includes CPE; LOS required' : ''}
+                    </p>
                   </div>
 
                   <div className="space-y-2">

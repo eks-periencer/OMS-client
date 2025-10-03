@@ -170,6 +170,9 @@ export async function getOrderWorkflowHistory(id: string): Promise<any[]> {
     transitionName: h.transition_name ?? h.transitionName ?? undefined,
     occurredAt: h.executed_at ?? h.occurred_at ?? h.occurredAt ?? h.timestamp ?? null,
     actorId: h.executed_by ?? h.actor_id ?? h.actorId ?? null,
+    actorName: (h.actor_first_name || h.actorFirstName || '') || (h.actor_last_name || h.actorLastName || '')
+      ? `${(h.actor_first_name || h.actorFirstName || '').toString().trim()} ${(h.actor_last_name || h.actorLastName || '').toString().trim()}`.trim()
+      : null,
     reason: h.execution_reason ?? h.reason ?? undefined,
   }));
 }
