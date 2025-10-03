@@ -31,7 +31,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../ui/popover"
-import { getMyNotifications, markNotificationsRead, type NotificationItem } from "../../../../lib/api/notifications"
+import { getMyNotifications, markNotificationsRead, deleteNotifications, deleteAllNotifications, type NotificationItem } from "../../../../lib/api/notifications"
 import { useNavigate } from "react-router-dom"
 
 
@@ -116,12 +116,20 @@ export function Sidebar() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   
-  const [notifications, setNotifications] = useState<Array<NotificationItem & { readAt?: string | null }>>([])
-  const unreadCount = notifications.filter((n) => !n.readAt).length
-  const unreadNotifications = notifications.filter((n) => !n.readAt)
   const NOTIFICATION_STORAGE_KEY = "oms.notifications.readAtMap"
   const READ_EXPIRY_DAYS = 7
   // const dispatch = useDispatch()
+  
+  const [notifications, setNotifications] = useState<Array<NotificationItem & { readAt?: string | null }>>([])
+  const unreadCount = notifications.filter((n) => !n.readAt).length
+  const unreadNotifications = notifications.filter((n) => !n.readAt)
+  
+  // Debug logging for notification counts
+  console.log("🔢 Notification counts:", {
+    total: notifications.length,
+    unread: unreadCount,
+    unreadNotifications: unreadNotifications.length
+  })
 
   
   const purgeExpired = useCallback((items: typeof notifications) => {
@@ -136,13 +144,29 @@ export function Sidebar() {
 
   const loadNotifications = useCallback(async () => {
     try {
+      console.log("🔔 Loading notifications...")
       const readMapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
       const readMap: Record<string, string> = readMapRaw ? JSON.parse(readMapRaw) : {}
+      console.log("📖 Read map from localStorage:", readMap)
+      
       const items = await getMyNotifications()
-      const withRead = items.map((n) => ({ ...n, readAt: readMap[n._id] || null }))
-      setNotifications(purgeExpired(withRead))
+      console.log("📥 Raw notifications from API:", items.length, items)
+      
+      // Only apply readAt if the notification was explicitly marked as read by user interaction
+      // Backend should provide readAt from database, localStorage is just for client-side tracking
+      const withRead = items.map((n) => ({ 
+        ...n, 
+        readAt: n.readAt || readMap[n._id] || null 
+      }))
+      console.log("📋 Notifications with read status:", withRead.length, withRead)
+      
+      const purged = purgeExpired(withRead)
+      console.log("🗑️ After purging expired:", purged.length, purged)
+      
+      setNotifications(purged)
+      console.log("✅ Notifications set in state")
     } catch (e) {
-      console.error("Failed to fetch notifications", e)
+      console.error("❌ Failed to fetch notifications", e)
     }
   }, [NOTIFICATION_STORAGE_KEY, purgeExpired])
 
@@ -163,6 +187,121 @@ export function Sidebar() {
     window.addEventListener('oms:notifications:refresh', handler)
     return () => window.removeEventListener('oms:notifications:refresh', handler)
   }, [loadNotifications])
+
+  // Debug helper - expose functions to window for testing
+  useEffect(() => {
+    (window as any).debugNotifications = {
+      clearReadCache: () => {
+        localStorage.removeItem(NOTIFICATION_STORAGE_KEY)
+        console.log("🗑️ Cleared notification read cache")
+      },
+      refreshNotifications: () => {
+        loadNotifications()
+        console.log("🔄 Refreshing notifications...")
+      },
+      showCurrentState: () => {
+        console.log("📊 Current notification state:", {
+          notifications,
+          unreadCount,
+          unreadNotifications,
+          readMap: JSON.parse(localStorage.getItem(NOTIFICATION_STORAGE_KEY) || '{}')
+        })
+      },
+      resetAllToUnread: () => {
+        localStorage.removeItem(NOTIFICATION_STORAGE_KEY)
+        loadNotifications()
+        console.log("🔄 Reset all notifications to unread and refreshed")
+      },
+      testDelete: async (notificationId?: string) => {
+        const testId = notificationId || (notifications[0]?._id)
+        if (!testId) {
+          console.log("❌ No notifications to test delete")
+          return
+        }
+        console.log("🧪 Testing delete for notification:", testId)
+        try {
+          const result = await deleteNotifications([testId])
+          console.log("✅ Delete test result:", result)
+          loadNotifications() // Refresh to see if it's gone
+        } catch (e) {
+          console.error("❌ Delete test failed:", e)
+        }
+      },
+      deleteAllNotifications: async () => {
+        console.log("🗑️ DANGER: Deleting ALL notifications from database...")
+        try {
+          const result = await deleteAllNotifications()
+          console.log("✅ Delete all result:", result)
+          loadNotifications() // Refresh to see empty list
+        } catch (e) {
+          console.error("❌ Delete all failed:", e)
+        }
+      },
+      testMarkReadAndDelete: async (notificationId?: string) => {
+        const testId = notificationId || (notifications[0]?._id)
+        if (!testId) {
+          console.log("❌ No notifications to test mark-read-delete")
+          return
+        }
+        console.log("🧪 Testing mark-as-read-and-delete for notification:", testId)
+        try {
+          await markAsRead([testId])
+          console.log("✅ Mark-read-delete test completed")
+        } catch (e) {
+          console.error("❌ Mark-read-delete test failed:", e)
+        }
+      },
+      testDirectDelete: async (notificationId?: string) => {
+        const testId = notificationId || (notifications[0]?._id)
+        if (!testId) {
+          console.log("❌ No notifications to test direct delete")
+          return
+        }
+        console.log("🧪 Testing direct delete for notification:", testId)
+        console.log("📋 Current notification:", notifications.find(n => n._id === testId))
+        try {
+          const result = await deleteNotifications([testId])
+          console.log("✅ Direct delete result:", result)
+          loadNotifications() // Refresh
+        } catch (e) {
+          console.error("❌ Direct delete failed:", e)
+        }
+      }
+    }
+  }, [notifications, unreadCount, unreadNotifications, loadNotifications, NOTIFICATION_STORAGE_KEY])
+
+  // Mark as read and then delete notifications
+  const markAsRead = useCallback(async (notificationIds: string[]) => {
+    try {
+      console.log("📖 Step 1: Marking notifications as read:", notificationIds)
+      
+      // Step 1: Mark as read in backend
+      const readResult = await markNotificationsRead(notificationIds)
+      console.log(`✅ Marked ${readResult.updated} notifications as read`)
+      
+      // Step 2: Delete from backend database
+      console.log("🗑️ Step 2: Deleting notifications from database...")
+      const deleteResult = await deleteNotifications(notificationIds)
+      console.log(`🗑️ Deleted ${deleteResult.deleted} notifications from database`)
+      
+      // Step 3: Update localStorage cache
+      const readMapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
+      const readMap: Record<string, string> = readMapRaw ? JSON.parse(readMapRaw) : {}
+      
+      notificationIds.forEach(id => {
+        delete readMap[id]
+      })
+      
+      localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(readMap))
+      
+      // Step 4: Remove from local state immediately
+      setNotifications(prev => prev.filter(n => !notificationIds.includes(n._id)))
+      
+      console.log("✅ Complete: Marked as read and deleted notifications:", notificationIds)
+    } catch (e) {
+      console.error("❌ Failed to mark as read and delete notifications", e)
+    }
+  }, [NOTIFICATION_STORAGE_KEY])
   
   
   const user = useSelector((state: RootState)=> state.authentication.user)
@@ -248,17 +387,10 @@ export function Sidebar() {
                         <button
                           key={n._id}
                           className="w-full text-left border-b border-border/50 p-4 hover:bg-accent/50 transition-colors duration-200 last:border-b-0 group"
-                          onClick={() => {
-                            setNotifications((prev) => {
-                              const nowIso = new Date().toISOString()
-                              const next = prev.map((it) => it._id === n._id && !it.readAt ? { ...it, readAt: nowIso } : it)
-                              const mapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
-                              const map: Record<string, string> = mapRaw ? JSON.parse(mapRaw) : {}
-                              map[n._id] = map[n._id] || nowIso
-                              localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
-                              return next
-                            })
-                            markNotificationsRead([n._id]).catch(() => {})
+                          onClick={async () => {
+                            console.log("🔔 User clicked notification:", n._id, n.title)
+                            // Mark as read and delete (two-step process)
+                            await markAsRead([n._id])
                             if (n.url) {
                               setIsNotificationsOpen(false)
                               navigate(n.url)
@@ -312,17 +444,10 @@ export function Sidebar() {
                         <button
                           key={n._id}
                           className="w-full text-left border-b border-border/50 p-4 hover:bg-accent/50 transition-colors duration-200 last:border-b-0 group"
-                          onClick={() => {
-                            setNotifications((prev) => {
-                              const nowIso = new Date().toISOString()
-                              const next = prev.map((it) => it._id === n._id && !it.readAt ? { ...it, readAt: nowIso } : it)
-                              const mapRaw = localStorage.getItem(NOTIFICATION_STORAGE_KEY)
-                              const map: Record<string, string> = mapRaw ? JSON.parse(mapRaw) : {}
-                              map[n._id] = map[n._id] || nowIso
-                              localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(map))
-                              return next
-                            })
-                            markNotificationsRead([n._id]).catch(() => {})
+                          onClick={async () => {
+                            console.log("🔔 User clicked notification:", n._id, n.title)
+                            // Mark as read and delete (two-step process)
+                            await markAsRead([n._id])
                             if (n.url) {
                               setIsNotificationsOpen(false)
                               navigate(n.url)
