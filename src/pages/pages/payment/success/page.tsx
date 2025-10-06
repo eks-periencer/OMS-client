@@ -26,7 +26,7 @@ const PaymentSuccessPage: React.FC = () => {
       try {
         const base = (import.meta as any).env?.VITE_ONB_BASE_URL
           || (typeof window !== 'undefined' ? (window as any).__ONB_API_BASE_URL__ : undefined)
-          || 'https://oms-server-ntlv.onrender.com';
+          || 'https://microservices-oms.onrender.com';
         const url = `${String(base).replace(/\/+$/g, '')}/api/payments/confirm?session_id=${encodeURIComponent(sessionIdParam)}`;
         const resp = await fetch(url, {
           method: 'POST',
