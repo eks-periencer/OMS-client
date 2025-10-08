@@ -219,15 +219,15 @@ export default function OnboardingPage() {
     }
 
     return list.filter((item) => {
-      const matchesSearch =
-        `${item.customer.firstName} ${item.customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.customer.customerNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch =
+      `${item.customer.firstName} ${item.customer.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.customer.customerNumber.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesStatus = statusFilter === "all" || item.status === statusFilter
-      const matchesType = typeFilter === "all" || item.onboardingType === typeFilter
+    const matchesStatus = statusFilter === "all" || item.status === statusFilter
+    const matchesType = typeFilter === "all" || item.onboardingType === typeFilter
 
-      return matchesSearch && matchesStatus && matchesType
-    })
+    return matchesSearch && matchesStatus && matchesType
+  })
   }, [items, customers, metrics, searchTerm, statusFilter, typeFilter])
 
   const liveStats = useMemo(() => {
@@ -272,11 +272,11 @@ export default function OnboardingPage() {
             </div>
             <div className="flex gap-2">
               <Link to="/customers/create">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
                   Create Customer
-                </Button>
-              </Link>
+              </Button>
+            </Link>
               <Button variant="outline" onClick={() => setIsInitiateDialogOpen(true)} disabled={initiating}>
                 {initiating ? 'Initiating...' : 'Initiate for Existing'}
               </Button>
@@ -427,12 +427,12 @@ export default function OnboardingPage() {
                             {loading ? (
                               <div className="animate-pulse h-6 w-40 bg-muted rounded" />
                             ) : (
-                              <div>
-                                <div className="font-medium">
-                                  {item.customer.firstName} {item.customer.lastName}
-                                </div>
-                                <div className="text-sm text-muted-foreground">{item.customer.customerNumber}</div>
+                            <div>
+                              <div className="font-medium">
+                                {item.customer.firstName} {item.customer.lastName}
                               </div>
+                              <div className="text-sm text-muted-foreground">{item.customer.customerNumber}</div>
+                            </div>
                             )}
                           </TableCell>
                           <TableCell>
@@ -445,10 +445,10 @@ export default function OnboardingPage() {
                                 <div className="animate-pulse h-3 w-10 bg-muted rounded" />
                               </div>
                             ) : (
-                              <div className="space-y-2">
-                                <Progress value={item.completionPercentage} className="w-20" />
-                                <span className="text-sm text-muted-foreground">{item.completionPercentage}%</span>
-                              </div>
+                            <div className="space-y-2">
+                              <Progress value={item.completionPercentage} className="w-20" />
+                              <span className="text-sm text-muted-foreground">{item.completionPercentage}%</span>
+                            </div>
                             )}
                           </TableCell>
                           <TableCell>
@@ -467,9 +467,9 @@ export default function OnboardingPage() {
                           </TableCell>
                           <TableCell>
                             {loading ? <div className="animate-pulse h-4 w-20 bg-muted rounded" /> : (
-                              <div className="text-sm">
-                                {item.assignedTo.firstName} {item.assignedTo.lastName}
-                              </div>
+                            <div className="text-sm">
+                              {item.assignedTo.firstName} {item.assignedTo.lastName}
+                            </div>
                             )}
                           </TableCell>
                           <TableCell>{loading ? <div className="animate-pulse h-4 w-16 bg-muted rounded" /> : (item.estimatedCompletion ? new Date(item.estimatedCompletion).toLocaleDateString() : '-')}</TableCell>
@@ -478,11 +478,11 @@ export default function OnboardingPage() {
                               <div className="animate-pulse h-8 w-20 bg-muted rounded" />
                             ) : (
                               <Link to={`/onboarding/${item.id}`}>
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View
-                                </Button>
-                              </Link>
+                              <Button variant="ghost" size="sm">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </Button>
+                            </Link>
                             )}
                           </TableCell>
                         </TableRow>

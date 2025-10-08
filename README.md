@@ -1,27 +1,80 @@
 # OMS Client
 
-This client consumes the OMS main server APIs (and indirectly the onboarding service through the main server).
+This client is the web UI for the OMS backend. It primarily talks to the OMS server, and for payments it also calls the onboarding service directly on the payment success screen to confirm the Stripe Checkout Session.
 
-## Configure API base URL
+## Environment configuration
 
-Create a `.env` file at the project root (alongside `package.json`):
+Create a `.env` file at the project root (alongside `package.json`). These variables control where the app sends requests:
 
+```bash
+# OMS API base (required in hosted environments)
+VITE_API_BASE_URL=https://<oms-host>
+
+# Onboarding service base used by the Payment Success screen
+# If omitted, the client will also look for window.__ONB_API_BASE_URL__ at runtime
+# and falls back to http://localhost:3003 for local dev
+VITE_ONB_BASE_URL=https://<onboarding-host>
 ```
-VITE_API_BASE_URL=https://oms-server-ntlv.onrender.com
+
+Alternate runtime global (if you cannot rebuild):
+
+```html
+<script>
+  window.__ONB_API_BASE_URL__ = 'https://<onboarding-host>'
+  // Example: window.__ONB_API_BASE_URL__ = 'https://onboarding.example.com'
+</script>
 ```
 
-If omitted, it defaults to `http://localhost:3003`.
+Defaults if unset:
+- `VITE_API_BASE_URL` → `http://localhost:3003`
+- `VITE_ONB_BASE_URL`/`window.__ONB_API_BASE_URL__` → `http://localhost:3003`
 
-## Quick start
+## Running locally
 
-```
+```bash
 npm i
 npm run dev
 ```
 
+Ensure your local OMS and onboarding services are running and CORS allows `http://localhost:5173` (or your Vite dev port).
+
+## Payment confirmation flow
+
+After a successful Stripe Checkout payment, Stripe redirects to your success URL with `?session_id=cs_test_...`.
+
+The page `pages/payment/success/page.tsx` automatically:
+1. Reads `session_id` from the URL
+2. Calls the onboarding public endpoint:
+   - `POST /api/payments/confirm?session_id=<session_id>` on `VITE_ONB_BASE_URL`
+3. On success, the onboarding service verifies the session with Stripe and notifies OMS to mark the order as paid (`is_paid=true`, `status=payment_received`).
+4. The UI shows either “Payment confirmed and order updated.” or an error banner.
+
+Note: The confirmation call is public; no user auth headers are required.
+
+## Quick Postman checks
+
+1) Confirm payment (onboarding):
+```bash
+POST {{onboarding_base}}/api/payments/confirm?session_id={{session_id}}
+Content-Type: application/json
+```
+
+2) Verify order (OMS):
+```bash
+GET {{oms_base}}/orders/{{order_id}}
+```
+Expected: `isPaid` true and `status` `payment_received` after confirmation.
+
+## Troubleshooting
+
+- CORS error on confirm: allow the client origin on onboarding CORS config.
+- Wrong base URL: set `VITE_ONB_BASE_URL` or `window.__ONB_API_BASE_URL__` to your onboarding host.
+- Missing/invalid `session_id`: use the `session_id` from the Stripe success redirect or from Stripe Dashboard → Checkout Sessions.
+- OMS not updated: ensure onboarding has `OMS_SERVER_URL` and matching `ONBOARDING_SERVICE_API_KEY` to reach OMS.
+
 ## Client SDK
 
-- `lib/api/client.ts`: axios instance and helpers
+- `lib/api/client.ts`: shared axios instance for OMS
 - `lib/api/customers.ts`: typed functions for customer endpoints
 - `hooks/useCustomers.ts`: React hook with load/create/convert helpers
 
