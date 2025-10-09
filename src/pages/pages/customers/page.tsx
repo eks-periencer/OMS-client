@@ -12,6 +12,7 @@ import { Plus, Search, Eye, Edit, MoreHorizontal, Users, UserCheck, Clock } from
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/components/ui/dropdown-menu"
 import {Link} from "react-router-dom"
 import { useCustomers } from "../../../../hooks/useCustomers"
+import { useOrders } from "../../../../hooks/useOrders"
 
 // Utilities to work with trial in API shape
 
@@ -32,6 +33,15 @@ export default function CustomersPage() {
   const [typeFilter, setTypeFilter] = useState("all")
   const [trialFilter, setTrialFilter] = useState("all")
   const { customers, stats, loading, error } = useCustomers()
+  const { items: orders, loading: ordersLoading } = useOrders()
+
+  const activeOrdersCount = useMemo(() => {
+    const list = orders || []
+    return list.filter((o: any) => {
+      const s = (o.current_state || o.status || '').toString().toLowerCase()
+      return s !== 'completed' && s !== 'complete' && s !== 'cancelled' && s !== 'canceled'
+    }).length
+  }, [orders])
 
   const filteredCustomers = useMemo(() => (customers || []).filter((customer) => {
     const matchesSearch =
@@ -56,7 +66,12 @@ export default function CustomersPage() {
         <div className="p-6">
           {/* Top loading indicator removed per request */}
           {error && (
-            <div className="mb-4 text-sm text-red-600">{error}</div>
+            <Card className="mb-4 border-red-200 bg-red-50">
+              <CardContent className="py-3 flex items-center justify-between">
+                <div className="text-sm text-red-700">{error}</div>
+                <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Retry</Button>
+              </CardContent>
+            </Card>
           )}
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -112,7 +127,13 @@ export default function CustomersPage() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">—</div>
+                <div className="text-2xl font-bold">
+                  {loading || ordersLoading ? (
+                    <span className="inline-block h-5 w-16 bg-muted rounded animate-pulse" />
+                  ) : (
+                    activeOrdersCount
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

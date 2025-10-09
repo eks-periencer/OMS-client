@@ -21,7 +21,7 @@ import { Label } from "../../../../components/components/ui/label"
 import { Switch } from "../../../../components/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../components/components/ui/dropdown-menu"
-import { Users, Plus, Search, MoreHorizontal, Edit, Trash2, Key, UserCheck, UserX, Loader2 } from "lucide-react"
+import { Users, Plus, Search, MoreHorizontal, Edit, Trash2, Key, UserCheck, UserX } from "lucide-react"
 import { Sidebar } from "../../../../components/components/layout/sidebar"
 import { useDispatch, useSelector } from "react-redux"
 import { 
@@ -230,7 +230,14 @@ export default function UsersPage() {
       <Sidebar />
       <main className="flex-1 overflow-auto min-w-0">
         <div className="p-6 container mx-auto min-w-0">
-          <div className="space-y-6">
+      <div className="space-y-6">
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="py-3">
+            <div className="text-sm text-red-700">{error}</div>
+          </CardContent>
+        </Card>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -257,7 +264,11 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.total || users.length)}
+              {loading ? (
+                <span className="inline-block h-5 w-16 bg-muted rounded animate-pulse" />
+              ) : (
+                stats?.total || users.length
+              )}
             </div>
             <p className="text-xs text-muted-foreground">All system users</p>
           </CardContent>
@@ -269,7 +280,11 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.active || users.filter((u: ReduxUser) => u.isActive).length)}
+              {loading ? (
+                <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+              ) : (
+                stats?.active || users.filter((u: ReduxUser) => u.isActive).length
+              )}
             </div>
             <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
@@ -281,7 +296,11 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.inactive || users.filter((u: ReduxUser) => !u.isActive).length)}
+              {loading ? (
+                <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+              ) : (
+                stats?.inactive || users.filter((u: ReduxUser) => !u.isActive).length
+              )}
             </div>
             <p className="text-xs text-muted-foreground">Deactivated accounts</p>
           </CardContent>
@@ -293,7 +312,11 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : users.filter((u: ReduxUser) => u.role.name.includes("Admin")).length}
+              {loading ? (
+                <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+              ) : (
+                users.filter((u: ReduxUser) => u.role.name.includes("Admin")).length
+              )}
             </div>
             <p className="text-xs text-muted-foreground">Admin-level access</p>
           </CardContent>
@@ -352,6 +375,20 @@ export default function UsersPage() {
           <CardDescription>Manage user accounts and their access permissions</CardDescription>
         </CardHeader>
         <CardContent>
+          {loading && filteredUsers.length === 0 ? (
+            <div className="space-y-2 py-6">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={`sk-user-${i}`} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1 grid grid-cols-4 gap-4 w-full">
+                    <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                    <div className="h-4 w-56 bg-muted rounded animate-pulse" />
+                    <div className="h-5 w-24 bg-muted rounded animate-pulse" />
+                    <div className="h-5 w-20 bg-muted rounded animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -364,14 +401,7 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading && filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                    <p className="text-muted-foreground">Loading users...</p>
-                  </TableCell>
-                </TableRow>
-              ) : (
+              {(
                 filteredUsers.map((user: ReduxUser) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">
@@ -444,6 +474,7 @@ export default function UsersPage() {
               )}
             </TableBody>
           </Table>
+          )}
           {filteredUsers.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No users found matching your criteria.</p>

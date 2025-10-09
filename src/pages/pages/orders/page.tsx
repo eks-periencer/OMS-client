@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Button } from "../../../components/components/ui/button"
 import { Input } from "../../../components/components/ui/input"
@@ -8,11 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Badge } from "../../../components/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../components/components/ui/table"
-import { Plus, Search, Eye, Edit, MoreHorizontal, Loader2 } from "lucide-react"
+import { Plus, Search, Eye, Edit, MoreHorizontal } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/components/ui/dropdown-menu"
 import { Link } from "react-router-dom"
 import { useOrders } from "../../../../hooks/useOrders"
-import { toast } from "sonner"
+// import { toast } from "sonner"
+import { Switch } from "../../../components/components/ui/switch"
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -53,8 +54,9 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [hideCancelled, setHideCancelled] = useState(false)
 
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = useMemo(() => orders.filter((order) => {
     const matchesSearch =
       (order.order_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,9 +64,10 @@ export default function OrdersPage() {
 
     const matchesStatus = statusFilter === "all" || order.current_state === statusFilter
     const matchesPriority = priorityFilter === "all" || order.priority === priorityFilter
+    const isCancelled = (order.current_state || '').toLowerCase() === 'cancelled' || (order.current_state || '').toLowerCase() === 'canceled'
 
-    return matchesSearch && matchesStatus && matchesPriority
-  })
+    return matchesSearch && matchesStatus && matchesPriority && (!hideCancelled || !isCancelled)
+  }), [orders, searchTerm, statusFilter, priorityFilter, hideCancelled])
 
   if (error) {
     return (
@@ -125,6 +128,10 @@ export default function OrdersPage() {
                     />
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={hideCancelled} onCheckedChange={setHideCancelled} />
+                  <span className="text-sm text-muted-foreground">Hide cancelled</span>
+                </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-full md:w-48">
                     <SelectValue placeholder="Filter by status" />
@@ -158,16 +165,23 @@ export default function OrdersPage() {
           {/* Orders Table */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                Orders ({filteredOrders.length})
-                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              </CardTitle>
+              <CardTitle className="flex items-center gap-2">Orders ({filteredOrders.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {loading && filteredOrders.length === 0 ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  <span>Loading orders...</span>
+                <div className="space-y-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={`sk-order-${i}`} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1 grid grid-cols-6 gap-4 w-full">
+                        <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                        <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                        <div className="h-4 w-28 bg-muted rounded animate-pulse" />
+                        <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                        <div className="h-5 w-20 bg-muted rounded animate-pulse" />
+                        <div className="h-5 w-16 bg-muted rounded animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <Table>

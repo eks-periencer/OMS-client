@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState } from "react"
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Button } from "../../../components/components/ui/button"
 import { Input } from "../../../components/components/ui/input"
@@ -243,7 +243,25 @@ export default function ApplicationAdminPage() {
                   <CardTitle>Pending Applications ({loading ? '...' : filteredApplications.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
+                  {error && (
+                    <div className="mb-3 flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded">
+                      <div className="text-sm text-red-700">{error}</div>
+                      <Button variant="outline" size="sm" onClick={() => refetch?.()}>Retry</Button>
+                    </div>
+                  )}
+                  {loading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 5 }).map((_, idx) => (
+                        <div key={`sk-app-${idx}`} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-56 bg-muted rounded animate-pulse" />
+                            <div className="h-3 w-72 bg-muted rounded animate-pulse" />
+                          </div>
+                          <span className="h-5 w-20 bg-muted rounded animate-pulse" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -328,6 +346,7 @@ export default function ApplicationAdminPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

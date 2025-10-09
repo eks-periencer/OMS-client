@@ -1,14 +1,14 @@
 "use client"
 
-import { useAuth } from "../../../../lib/auth"
+// import { useAuth } from "../../../../lib/auth"
 import { Sidebar } from "../../../components/components/layout/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/components/ui/card"
 import { Badge } from "../../../components/components/ui/badge"
 import { Button } from "../../../components/components/ui/button"
 import { Package, Users, AlertTriangle, Clock, Plus } from "lucide-react"
 import { Link } from "react-router-dom"
-import { useEffect, useMemo, useState } from "react"
-import { getDashboard, getDashboardSummary, getPendingEscalations, getRecentOrders, type DashboardEscalation, type DashboardOrder, type DashboardSummary } from "../../../../lib/api/dashboard"
+import { useEffect, useState } from "react"
+import { getDashboard, type DashboardEscalation, type DashboardOrder, type DashboardSummary } from "../../../../lib/api/dashboard"
 import { listOrders, type OrderItem } from "../../../../lib/api/orders"
 
 // Live state
@@ -49,7 +49,7 @@ function getPriorityColor(priority: string) {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary>(initialSummary)
   const [orders, setOrders] = useState<DashboardOrder[]>([])
   const [escalations, setEscalations] = useState<DashboardEscalation[]>([])
@@ -90,7 +90,7 @@ export default function DashboardPage() {
     const refreshRecent = async () => {
       try {
         const all = await listOrders()
-        const top5 = (all || []).sort((a: OrderItem, b: OrderItem) => new Date(b.created_at || b.createdAt || '').getTime() - new Date(a.created_at || a.createdAt || '').getTime()).slice(0, 5)
+        const top5 = (all || []).sort((a: OrderItem, b: OrderItem) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime()).slice(0, 5)
         const latest: DashboardOrder[] = top5.map(o => ({
           id: o.id,
           orderNumber: String(o.order_number || ''),
@@ -161,8 +161,20 @@ export default function DashboardPage() {
                 <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? '—' : summary.totalOrders}</div>
-                <p className="text-xs text-muted-foreground">+{isLoading ? '—' : summary.ordersToday} today</p>
+                <div className="text-2xl font-bold">
+                  {isLoading ? (
+                    <span className="inline-block h-5 w-16 bg-muted rounded animate-pulse" />
+                  ) : (
+                    summary.totalOrders
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {isLoading ? (
+                    <span className="inline-block h-3 w-20 bg-muted rounded animate-pulse align-middle" />
+                  ) : (
+                    <>+{summary.ordersToday} today</>
+                  )}
+                </p>
               </CardContent>
             </Card>
 
@@ -172,7 +184,13 @@ export default function DashboardPage() {
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? '—' : summary.activeOrders}</div>
+                <div className="text-2xl font-bold">
+                  {isLoading ? (
+                    <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+                  ) : (
+                    summary.activeOrders
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">In progress</p>
               </CardContent>
             </Card>
@@ -183,7 +201,13 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? '—' : summary.escalations}</div>
+                <div className="text-2xl font-bold">
+                  {isLoading ? (
+                    <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+                  ) : (
+                    summary.escalations
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">Pending resolution</p>
               </CardContent>
             </Card>
@@ -194,7 +218,13 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? '—' : summary.trialCustomers}</div>
+                <div className="text-2xl font-bold">
+                  {isLoading ? (
+                    <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+                  ) : (
+                    summary.trialCustomers
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">Active trials</p>
               </CardContent>
             </Card>
@@ -214,7 +244,21 @@ export default function DashboardPage() {
                   <div className="text-sm text-red-600 mb-3">{error}</div>
                 )}
                 <div className="space-y-4">
-                  {(isLoading ? [] : orders).map((order) => (
+                  {isLoading && (
+                    <>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={`sk-order-${i}`} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                            <div className="h-3 w-64 bg-muted rounded animate-pulse" />
+                            <div className="h-3 w-32 bg-muted rounded animate-pulse" />
+                          </div>
+                          <span className="h-5 w-20 bg-muted rounded animate-pulse" />
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {!isLoading && orders.map((order) => (
                     <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
@@ -249,7 +293,21 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(isLoading ? [] : escalations).map((escalation) => (
+                  {isLoading && (
+                    <>
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={`sk-esc-${i}`} className="p-3 border rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="h-4 w-32 bg-muted rounded animate-pulse" />
+                            <span className="h-5 w-16 bg-muted rounded animate-pulse" />
+                          </div>
+                          <div className="h-3 w-48 bg-muted rounded animate-pulse mb-2" />
+                          <div className="h-3 w-40 bg-muted rounded animate-pulse" />
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {!isLoading && escalations.map((escalation) => (
                     <div key={escalation.id} className="p-3 border rounded-lg border-orange-200 bg-orange-50">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium">{escalation.orderNumber}</span>

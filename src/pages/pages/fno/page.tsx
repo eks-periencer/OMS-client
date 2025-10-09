@@ -85,11 +85,15 @@ export default function FNOPage() {
   const [stats, setStats] = useState<Record<string, unknown> | null>(null)
   const [selectedFno, setSelectedFno] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
+        setLoading(true)
+        setError(null)
         console.log("[FNO] Fetching FNO data...")
         
         const [s, fnos, l] = await Promise.all([
@@ -112,8 +116,11 @@ export default function FNOPage() {
         setStats(s)
         setFnoRows(Array.isArray(fnos) ? fnos : [])
         setLogs(Array.isArray(l) ? l : [])
-      } catch (e) {
+      } catch (e: any) {
         console.error("[FNO] Unexpected error in useEffect:", e)
+        if (mounted) setError(e?.message || 'Failed to load FNO data')
+      } finally {
+        if (mounted) setLoading(false)
       }
     })()
     return () => { mounted = false }
@@ -194,6 +201,16 @@ export default function FNOPage() {
               </Button>
           </div>
 
+          {/* Error Banner */}
+          {error && (
+            <Card className="mb-4 border-red-200 bg-red-50">
+              <CardContent className="py-3 flex items-center justify-between">
+                <div className="text-sm text-red-700">{error}</div>
+                <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stats Grid */}
           <div className="grid grid-cols-4 gap-6 mb-6">
             <Card className="bg-white shadow-sm border border-gray-200">
@@ -202,8 +219,20 @@ export default function FNOPage() {
                 <Network className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.totals?.totalFNOs ?? '-'}</div>
-                <p className="text-xs text-gray-500">{(stats as any)?.totals?.active ?? '-'} active</p>
+              <div className="text-2xl font-bold text-gray-900">
+                {loading ? (
+                  <span className="inline-block h-5 w-16 bg-muted rounded animate-pulse" />
+                ) : (
+                  (stats as any)?.totals?.totalFNOs ?? '-'
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                {loading ? (
+                  <span className="inline-block h-3 w-20 bg-muted rounded animate-pulse align-middle" />
+                ) : (
+                  <>{(stats as any)?.totals?.active ?? '-'} active</>
+                )}
+              </p>
               </CardContent>
             </Card>
 
@@ -213,8 +242,20 @@ export default function FNOPage() {
                 <Activity className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.totals?.apiIntegrations ?? '-'}</div>
-                <p className="text-xs text-gray-500">{(stats as any)?.totals?.manualIntegrations ?? '-'} manual</p>
+              <div className="text-2xl font-bold text-gray-900">
+                {loading ? (
+                  <span className="inline-block h-5 w-14 bg-muted rounded animate-pulse" />
+                ) : (
+                  (stats as any)?.totals?.apiIntegrations ?? '-'
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                {loading ? (
+                  <span className="inline-block h-3 w-24 bg-muted rounded animate-pulse align-middle" />
+                ) : (
+                  <>{(stats as any)?.totals?.manualIntegrations ?? '-'} manual</>
+                )}
+              </p>
               </CardContent>
             </Card>
 
@@ -224,8 +265,14 @@ export default function FNOPage() {
                 <Clock className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.metrics?.ordersProcessedThisMonth ?? '-'}</div>
-                <p className="text-xs text-gray-500">this month</p>
+              <div className="text-2xl font-bold text-gray-900">
+                {loading ? (
+                  <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+                ) : (
+                  (stats as any)?.metrics?.ordersProcessedThisMonth ?? '-'
+                )}
+              </div>
+              <p className="text-xs text-gray-500">this month</p>
               </CardContent>
             </Card>
 
@@ -235,8 +282,14 @@ export default function FNOPage() {
                 <Activity className="h-4 w-4 text-gray-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-gray-900">{(stats as any)?.metrics?.averageSuccessRate ?? '-'}%</div>
-                <p className="text-xs text-gray-500">average</p>
+              <div className="text-2xl font-bold text-gray-900">
+                {loading ? (
+                  <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
+                ) : (
+                  <>{(stats as any)?.metrics?.averageSuccessRate ?? '-'}%</>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">average</p>
               </CardContent>
             </Card>
           </div>
@@ -300,6 +353,23 @@ export default function FNOPage() {
                   <CardTitle className="text-gray-800">FNO Configurations ({filteredFNOs.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {loading && filteredFNOs.length === 0 ? (
+                    <div className="space-y-2">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={`sk-fno-${i}`} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1 grid grid-cols-7 gap-4 w-full">
+                            <div className="h-4 w-40 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                            <div className="h-5 w-20 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-48 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                            <div className="h-5 w-24 bg-muted rounded animate-pulse" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="border-gray-200">
@@ -371,6 +441,7 @@ export default function FNOPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
