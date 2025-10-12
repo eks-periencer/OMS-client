@@ -22,6 +22,7 @@ import CustomerDetailsPage from './pages/pages/customers/[id]/page.tsx'
 import EditCustomerPage from './pages/pages/customers/[id]/edit/page.tsx'
 import PaymentSuccessPage from './pages/pages/payment/success/page.tsx'
 import PaymentCancelledPage from './pages/pages/payment/cancelled/page.tsx'
+import TrialAnalyticsPage from './pages/pages/trial-analytics/page.tsx'
 import { Toaster } from './components/components/ui/sonner'
 import { AuthGuard } from './components/AuthGuard'
 // import RegisterPage from './pages/pages/register/page.tsx'
@@ -153,7 +154,13 @@ function App() {
           <Route path='/payment/cancelled' element={
             <PaymentCancelledPage />
           } />
+          <Route path='/trial-analytics' element={
+            <AuthGuard>
+              <TrialAnalyticsPage />
+            </AuthGuard>
+          } />
         </Routes>
+        
         <Toaster />
       </AuthProvider>
     </>

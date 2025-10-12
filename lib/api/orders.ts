@@ -176,3 +176,41 @@ export async function getOrderWorkflowHistory(id: string): Promise<any[]> {
     reason: h.execution_reason ?? h.reason ?? undefined,
   }));
 }
+
+// New: qualify as TBYB (fiber)
+export async function qualifyFiber(orderId: string, body: any): Promise<any> {
+  const { data } = await api.post(`/orders/${orderId}/qualify/fiber`, body || {});
+  return data?.data || data;
+}
+
+// New: simulate provisioning with optional stopAt, fno, and installationStatus
+export async function simulateProvisioning(orderId: string, opts?: { stopAt?: string; fno?: string; installationStatus?: 'new' | 'existing' }): Promise<any> {
+  const payload: any = {};
+  if (opts?.stopAt) payload.stopAt = opts.stopAt;
+  if (opts?.fno) payload.fno = opts.fno;
+  if (opts?.installationStatus) payload.installationStatus = opts.installationStatus;
+  const { data } = await api.post(`/orders/${orderId}/simulate/fiber-provisioning`, payload);
+  return data?.data || data;
+}
+
+// Backfill a missing trial record for an order
+export async function backfillTrial(orderId: string): Promise<any> {
+  const { data } = await api.post(`/orders/${orderId}/trials/backfill`);
+  return data?.data || data;
+}
+
+// New: list trial orders (for dropdowns)
+export async function listTrialOrders(): Promise<OrderItem[]> {
+  const { data } = await api.get('/orders/trials');
+  const raw = (data?.data || []) as any[];
+  return raw.map((it: any) => ({
+    id: it.id,
+    order_number: it.order_number,
+    customer_id: it.customer_id,
+    order_type: it.order_type,
+    current_state: it.current_state,
+    service_details: it.service_details,
+    created_at: it.created_at,
+    customer: it.customer || {}
+  }));
+}

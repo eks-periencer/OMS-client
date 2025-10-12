@@ -22,6 +22,7 @@ import {
   X,
   Home,
   FileText,
+  BarChart3,
   Network,
   Bell,
 } from "lucide-react"
@@ -78,6 +79,12 @@ const navigation: NavItem[] = [
     href: "/onboarding",
     icon: UserCheck,
     permission: "onboarding:manage",
+  },
+  {
+    title: "Trial Analytics",
+    href: "/trial-analytics",
+    icon: BarChart3,
+    permission: "trials:view",
   },
   {
     title: "FNO Management",

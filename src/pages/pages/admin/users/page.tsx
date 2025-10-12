@@ -5,23 +5,18 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../../components/components/ui/card"
 import { Button } from "../../../../components/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../../components/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/components/ui/table"
 import { Badge } from "../../../../components/components/ui/badge"
+import { getUserActivities, type UserActivity } from "../../../../../lib/api/users"
 import { Input } from "../../../../components/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../components/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../../../../components/components/ui/dialog"
+import { DialogDescription, DialogFooter, DialogTrigger } from "../../../../components/components/ui/dialog"
 import { Label } from "../../../../components/components/ui/label"
 import { Switch } from "../../../../components/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../../../components/components/ui/table"
+// (Table already imported above)
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../../components/components/ui/dropdown-menu"
-import { Users, Plus, Search, MoreHorizontal, Edit, Trash2, Key, UserCheck, UserX } from "lucide-react"
+import { Users, Plus, Search, MoreHorizontal, Edit, Trash2, Key, UserCheck, UserX, Loader2 } from "lucide-react"
 import { Sidebar } from "../../../../components/components/layout/sidebar"
 import { useDispatch, useSelector } from "react-redux"
 import { 
@@ -59,6 +54,7 @@ const availableRoles = [
 export default function UsersPage() {
   const dispatch = useDispatch<AppDispatch>()
   const { users, stats, loading, error, selectedUser } = useSelector((state: RootState) => state.userManagement)
+  const userList: ReduxUser[] = Array.isArray(users) ? users : []
   const { isAuthenticated } = useSelector((state: RootState) => state.authentication)
   const { withLoading, isLoading } = useLoading()
   
@@ -105,7 +101,7 @@ export default function UsersPage() {
   // }, [isAuthenticated, users, stats, loading, error])
 
   // Filter users
-  const filteredUsers = users.filter((user: ReduxUser) => {
+  const filteredUsers = userList.filter((user: ReduxUser) => {
     // Debug logging to identify the issue
     if (!user.firstName || !user.lastName || !user.email) {
       console.warn('User with missing data:', user)
@@ -225,6 +221,45 @@ export default function UsersPage() {
     setIsEditDialogOpen(true)
   }
 
+  const handleViewActivity = (user: ReduxUser) => {
+    dispatch(setSelectedUser(user))
+    setIsViewActivityDialogOpen(true)
+    // lazy load activities
+    console.log('🪪 View Activity clicked for user:', { id: user.id, name: `${user.firstName} ${user.lastName}` })
+    void loadUserActivities(user.id)
+  }
+
+  const [isViewActivityDialogOpen, setIsViewActivityDialogOpen] = useState(false)
+  const [activities, setActivities] = useState<UserActivity[]>([])
+  const [activitiesMeta, setActivitiesMeta] = useState<{ total: number; limit: number; offset: number }>({ total: 0, limit: 50, offset: 0 })
+  const [loadingActivities, setLoadingActivities] = useState(false)
+  const [expandedActivityId, setExpandedActivityId] = useState<string | null>(null)
+
+  const loadUserActivities = async (userId: string, opts?: { offset?: number }) => {
+    try {
+      setLoadingActivities(true)
+      console.log('🔄 Loading activities…', { userId, opts })
+      const res = await getUserActivities(userId, { limit: 50, offset: opts?.offset ?? 0 })
+      console.log('🧾 Activities response:', {
+        count: res?.data?.length ?? 0,
+        meta: res?.meta,
+        sample: res?.data?.[0] ?? null,
+      })
+      setActivities(res.data)
+      setActivitiesMeta(res.meta)
+    } catch (e) {
+      console.error('❌ Failed to load user activities', e)
+      setActivities([])
+      setActivitiesMeta({ total: 0, limit: 50, offset: 0 })
+    } finally {
+      setLoadingActivities(false)
+      console.log('✅ Loading activities done')
+    }
+  }
+
+  // Activity modal UI
+  // Place near bottom of component JSX
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
@@ -264,11 +299,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? (
-                <span className="inline-block h-5 w-16 bg-muted rounded animate-pulse" />
-              ) : (
-                stats?.total || users.length
-              )}
+              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.total || userList.length)}
             </div>
             <p className="text-xs text-muted-foreground">All system users</p>
           </CardContent>
@@ -280,11 +311,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? (
-                <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
-              ) : (
-                stats?.active || users.filter((u: ReduxUser) => u.isActive).length
-              )}
+              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.active || userList.filter((u: ReduxUser) => u.isActive).length)}
             </div>
             <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
@@ -296,11 +323,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? (
-                <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
-              ) : (
-                stats?.inactive || users.filter((u: ReduxUser) => !u.isActive).length
-              )}
+              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : (stats?.inactive || userList.filter((u: ReduxUser) => !u.isActive).length)}
             </div>
             <p className="text-xs text-muted-foreground">Deactivated accounts</p>
           </CardContent>
@@ -312,11 +335,7 @@ export default function UsersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? (
-                <span className="inline-block h-5 w-12 bg-muted rounded animate-pulse" />
-              ) : (
-                users.filter((u: ReduxUser) => u.role.name.includes("Admin")).length
-              )}
+              {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : userList.filter((u: ReduxUser) => u.role?.name?.includes("Admin")).length}
             </div>
             <p className="text-xs text-muted-foreground">Admin-level access</p>
           </CardContent>
@@ -371,7 +390,7 @@ export default function UsersPage() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Users ({filteredUsers.length})</CardTitle>
+          <CardTitle>Users ({filteredUsers?.length || 0})</CardTitle>
           <CardDescription>Manage user accounts and their access permissions</CardDescription>
         </CardHeader>
         <CardContent>
@@ -401,7 +420,14 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(
+              {loading && (filteredUsers?.length || 0) === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    <p className="text-muted-foreground">Loading users...</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
                 filteredUsers.map((user: ReduxUser) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">
@@ -428,13 +454,20 @@ export default function UsersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleEditUser(user)}
-                            disabled={loading}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit User
-                          </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleViewActivity(user)}
+                          disabled={loading}
+                        >
+                          <View className="mr-2 h-4 w-4" />
+                          View Activity
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleEditUser(user)}
+                          disabled={loading}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit User
+                        </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => handleToggleUserStatus(user.id, user.isActive)}
                             disabled={loading}
@@ -474,8 +507,7 @@ export default function UsersPage() {
               )}
             </TableBody>
           </Table>
-          )}
-          {filteredUsers.length === 0 && (
+          {(filteredUsers?.length || 0) === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No users found matching your criteria.</p>
             </div>
@@ -504,6 +536,97 @@ export default function UsersPage() {
           </div>
         </div>
       </main>
+
+      {/* Activity Dialog */}
+      <Dialog open={isViewActivityDialogOpen} onOpenChange={setIsViewActivityDialogOpen}>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Activity</DialogTitle>
+            {selectedUser && (
+              <DialogDescription>
+                Activity for {selectedUser.firstName} {selectedUser.lastName} • {activitiesMeta?.total || 0} entries
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {loadingActivities ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Loading activities…</div>
+          ) : (activities?.length ?? 0) === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">No activity found for this user.</div>
+          ) : (
+            <div className="space-y-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Resource</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead>IP</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activities.map((row) => (
+                    <>
+                    <TableRow key={row.id} className="cursor-pointer" onClick={() => setExpandedActivityId(prev => prev === row.id ? null : row.id)}>
+                      <TableCell className="font-mono text-xs">{new Date(row.created_at).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{row.action}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{row.resource_type}</span>
+                          <span className="text-xs text-muted-foreground">{row.resource_id}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs max-w-[45ch] truncate">
+                          {Object.keys(row.new_values || {}).length || Object.keys(row.old_values || {}).length
+                            ? `${Object.keys(row.old_values || {}).length} → ${Object.keys(row.new_values || {}).length} fields`
+                            : '—'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{row.ip_address || '—'}</TableCell>
+                    </TableRow>
+                    {expandedActivityId === row.id && (
+                      <TableRow key={`${row.id}-details`}>
+                        <TableCell colSpan={5}>
+                          <div className="grid md:grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <div className="font-medium mb-1">Old Values</div>
+                              <pre className="bg-muted p-3 rounded overflow-auto max-h-64">
+{`${JSON.stringify(row.old_values || {}, null, 2)}`}
+                              </pre>
+                            </div>
+                            <div>
+                              <div className="font-medium mb-1">New Values</div>
+                              <pre className="bg-muted p-3 rounded overflow-auto max-h-64">
+{`${JSON.stringify(row.new_values || {}, null, 2)}`}
+                              </pre>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-muted-foreground">User Agent: <span className="font-mono">{row.user_agent || '—'}</span></div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </>
+                  ))}
+                </TableBody>
+              </Table>
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div>
+                  Showing {(activitiesMeta?.offset ?? 0) + 1}-{Math.min((activitiesMeta?.offset ?? 0) + (activitiesMeta?.limit ?? 0), activitiesMeta?.total ?? 0)} of {activitiesMeta?.total ?? 0}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={activitiesMeta.offset === 0}
+                    onClick={() => selectedUser && loadUserActivities(selectedUser.id, { offset: Math.max(activitiesMeta.offset - activitiesMeta.limit, 0) })}>Prev</Button>
+                  <Button variant="outline" size="sm" disabled={(activitiesMeta?.offset ?? 0) + (activitiesMeta?.limit ?? 0) >= (activitiesMeta?.total ?? 0)}
+                    onClick={() => selectedUser && loadUserActivities(selectedUser.id, { offset: (activitiesMeta?.offset ?? 0) + (activitiesMeta?.limit ?? 0) })}>Next</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Modals */}
       <DeleteConfirmationModal

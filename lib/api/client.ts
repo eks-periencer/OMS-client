@@ -51,5 +51,10 @@ export function unwrap<T>(response: any): T {
   return response as T;
 }
 
+export interface Paginated<T> {
+  data: T[];
+  meta: { total: number; limit: number; offset: number };
+}
+
 
 export default apiClient;

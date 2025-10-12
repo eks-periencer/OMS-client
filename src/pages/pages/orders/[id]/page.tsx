@@ -15,6 +15,7 @@ import { OrderWorkflowManager } from "../../../../components/components/orders/O
 import { OrderSlaMonitor } from "../../../../components/components/orders/OrderSlaMonitor"
 import { OrderEnrichmentForm } from "../../../../components/components/orders/OrderEnrichmentForm"
 import { OrderFnoSubmissionForm } from "../../../../components/components/orders/OrderFnoSubmissionForm"
+import { backfillTrial } from "../../../../../lib/api/orders"
 import { OrderScheduleForm } from "../../../../components/components/orders/OrderScheduleForm"
 import Swal from "sweetalert2"
 
@@ -68,11 +69,12 @@ export default function OrderDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { getOrder, getOrderWorkflowHistory, getOrderWorkflowState } = useOrders()
-  const [order, setOrder] = useState<any>(null)
-  const [workflowHistory, setWorkflowHistory] = useState<any[]>([])
+  const [order, setOrder] = useState<Record<string, unknown> | null>(null)
+  const [workflowHistory, setWorkflowHistory] = useState<Array<Record<string, unknown>>>([])
   const [validTransitions, setValidTransitions] = useState<Array<{ toState: string; name?: string }>>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
 
   const refreshOrder = async () => {
     if (!id) return
@@ -85,12 +87,12 @@ export default function OrderDetailsPage() {
       ])
       
       let orderData = orderDataRaw
-      const hasName = !!(orderData?.customer?.first_name || orderData?.customer?.firstName || orderData?.customer?.last_name || orderData?.customer?.lastName)
+      const hasName = !!(orderData?.customer?.first_name || orderData?.customer?.last_name)
       if ((!orderData?.customer || !hasName) && orderData?.customer_id) {
         try {
           const customer = await getCustomer(orderData.customer_id)
           orderData = { ...orderData, customer }
-        } catch (_) {
+        } catch {
           // ignore; leave customer unknown
         }
       }
@@ -184,6 +186,20 @@ export default function OrderDetailsPage() {
                 Edit Order
               </Button>
             </Link>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await backfillTrial(String(id))
+                  await Swal.fire({ icon: 'success', title: 'Trial Backfilled', timer: 1500, showConfirmButton: false })
+                  await refreshOrder()
+                } catch (e: any) {
+                  await Swal.fire({ icon: 'error', title: 'Backfill failed', text: e?.message || 'Failed to backfill trial' })
+                }
+              }}
+            >
+              Backfill Trial
+            </Button>
           </div>
 
           {/* Status Overview */}
@@ -266,9 +282,9 @@ export default function OrderDetailsPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Customer</p>
-                      <p className="text-sm">
-                        {order?.customer?.first_name || order?.customer?.firstName || order?.customer?.name
-                          ? `${order?.customer?.first_name || order?.customer?.firstName || ''}${order?.customer?.last_name || order?.customer?.lastName ? ` ${order?.customer?.last_name || order?.customer?.lastName}` : ''}`.trim()
+                  <p className="text-sm">
+                        {order?.customer && (order as any).customer?.first_name
+                          ? `${(order as any).customer.first_name}${(order as any).customer.last_name ? ` ${(order as any).customer.last_name}` : ''}`.trim()
                           : 'Unknown Customer'}
                       </p>
                       {order.customer_id && (
@@ -428,6 +444,8 @@ export default function OrderDetailsPage() {
                 <OrderScheduleForm order={order} onUpdate={refreshOrder} />
             </TabsContent>
             )}
+
+            
           </Tabs>
         </div>
       </main>

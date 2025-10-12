@@ -208,6 +208,21 @@ export default function CreateOrderPage() {
                     </Select>
                     <p className="text-xs text-muted-foreground">Only customers without an active order or onboarding are listed.</p>
                   </div>
+                  
+                  {/* Trial Customer Indicator */}
+                  {customerId && (() => {
+                    const selectedCustomer = eligibleCustomers.find((c: any) => c.id === customerId);
+                    return selectedCustomer?.is_trial ? (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center">
+                          <div className="h-2 w-2 bg-blue-600 rounded-full mr-2"></div>
+                          <span className="text-sm text-blue-800 font-medium">
+                            Trial Customer - This order will be processed as a trial order
+                          </span>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
                 </CardContent>
               </Card>
 
