@@ -48,7 +48,7 @@ const PaymentPage: React.FC = () => {
     // Check if this is a mock payment
     if (paymentData.entityId === 'mock_entity_id') {
       // For mock payments, redirect to mock payment handler
-      const mockUrl = `http://localhost:3004/api/payments/mock-checkout/${paymentData.checkoutId}`;
+      const mockUrl = `https://microservices-oms.onrender.com/api/payments/mock-checkout/${paymentData.checkoutId}`;
       window.location.href = mockUrl;
       return;
     }

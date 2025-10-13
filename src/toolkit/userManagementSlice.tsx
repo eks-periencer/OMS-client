@@ -3,7 +3,7 @@ import axios from 'axios'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { RootState } from './store'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003'
+const API_URL = import.meta.env.VITE_API_URL || 'https://oms-server-ntlv.onrender.com'
 
 // Debug logging
 console.log('🔧 UserManagement API_URL:', API_URL)
