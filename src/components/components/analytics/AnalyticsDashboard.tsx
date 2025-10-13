@@ -92,24 +92,35 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
       }
 
       const result = await exportReport(reportType, currentFilters, { format })
-      // In a real implementation, this would trigger a download
-      console.log('Export initiated:', result)
+      
+      if (result.url) {
+        // Create a temporary link and trigger download
+        const link = document.createElement('a')
+        link.href = result.url
+        link.download = result.filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
     } catch (err: any) {
       console.error('Export failed:', err)
     }
   }
 
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number | undefined | null) => {
+    if (num === undefined || num === null || isNaN(num)) return '0'
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
     return num.toString()
   }
 
-  const formatPercentage = (num: number) => {
+  const formatPercentage = (num: number | undefined | null) => {
+    if (num === undefined || num === null || isNaN(num)) return '0.0%'
     return num.toFixed(1) + '%'
   }
 
-  const formatTime = (hours: number) => {
+  const formatTime = (hours: number | undefined | null) => {
+    if (hours === undefined || hours === null || isNaN(hours)) return '0.0h'
     if (hours < 24) return `${hours.toFixed(1)}h`
     const days = Math.floor(hours / 24)
     const remainingHours = hours % 24
