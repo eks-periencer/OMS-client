@@ -1,5 +1,5 @@
 import '../styles/globals.css'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '../lib/auth'
 import { Toaster } from './components/components/ui/sonner'
 
@@ -32,6 +32,9 @@ function App() {
     <>
       <AuthProvider>
         <Routes>
+          {/* Root route redirect */}
+          <Route path='/' element={<Navigate to='/dashboard' replace />} />
+          
           {/* Public routes */}
           <Route path='/login' element={<LoginPage />} />
           <Route path='/payment' element={<PaymentPage />} />
