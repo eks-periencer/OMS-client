@@ -4,7 +4,7 @@ import axios from "axios";
 // ---------------------------
 // API Base URL
 // ---------------------------
-const API_URL = 'https://oms-server-ntlv.onrender.com';
+const API_URL = 'http://localhost:3003';
 
 // ---------------------------
 // Types

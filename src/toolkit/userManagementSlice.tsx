@@ -3,7 +3,12 @@ import axios from 'axios'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { RootState } from './store'
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://oms-server-ntlv.onrender.com/user-management'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003'
+
+// Debug logging
+console.log('🔧 UserManagement API_URL:', API_URL)
+console.log('🔧 VITE_API_URL env var:', import.meta.env.VITE_API_URL)
+console.log('🔧 UPDATED CODE IS RUNNING - DEBUG LOG ADDED AT:', new Date().toISOString())
 
 // Types
 interface Role {
@@ -64,6 +69,8 @@ const initialState: UserManagementState = {
 // 🔐 Auth header from Redux token
 const getAuthHeader = (getState: () => RootState) => {
   const token = getState().authentication.accessToken
+  console.log('🔧 Getting auth header, token available:', token ? 'YES' : 'NO')
+  console.log('🔧 Token (first 50 chars):', token ? token.substring(0, 50) + '...' : 'NO TOKEN')
   return {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -77,7 +84,7 @@ export const fetchUsers = createAsyncThunk(
   'userManagement/fetchUsers',
   async (_, thunkAPI) => {
     try {
-      const response = await axios.get(API_URL, getAuthHeader(thunkAPI.getState as () => RootState))
+      const response = await axios.get(`${API_URL}/user-management`, getAuthHeader(thunkAPI.getState as () => RootState))
       // Transform backend response to match frontend expectations
       const users = response.data.data?.map((user: any) => ({
         id: user.id || '',
@@ -108,7 +115,7 @@ export const fetchUserStats = createAsyncThunk(
   'userManagement/fetchUserStats',
   async (_, thunkAPI) => {
     try {
-      const response = await axios.get(`${API_URL}/stats`, getAuthHeader(thunkAPI.getState as () => RootState))
+      const response = await axios.get(`${API_URL}/user-management/stats`, getAuthHeader(thunkAPI.getState as () => RootState))
       // Transform backend response to match frontend expectations
       const stats = response.data.data
       return {
@@ -137,7 +144,12 @@ export const createUser = createAsyncThunk(
         phone: userData.phone,
         roleName: userData.role_name
       }
-      const response = await axios.post(API_URL, backendData, getAuthHeader(thunkAPI.getState as () => RootState))
+      const fullUrl = `${API_URL}/user-management`
+      console.log('🔧 Creating user with URL:', fullUrl)
+      console.log('🔧 Backend data:', backendData)
+      console.log('🔧 Auth header:', getAuthHeader(thunkAPI.getState as () => RootState))
+      
+      const response = await axios.post(fullUrl, backendData, getAuthHeader(thunkAPI.getState as () => RootState))
       
       // The backend returns {success: true, userId: "..."} 
       // We'll just return the success response and let the UI refresh the users list
@@ -163,7 +175,7 @@ export const updateUser = createAsyncThunk(
         phone: data.phone,
         role_name: data.role_name
       }
-      const response = await axios.put(`${API_URL}/${id}`, backendData, getAuthHeader(thunkAPI.getState as () => RootState))
+      const response = await axios.put(`${API_URL}/user-management/${id}`, backendData, getAuthHeader(thunkAPI.getState as () => RootState))
       return response.data
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err 
@@ -178,7 +190,7 @@ export const deactivateUser = createAsyncThunk(
   'userManagement/deactivateUser',
   async (id: string, thunkAPI) => {
     try {
-      await axios.post(`${API_URL}/${id}/deactivate`, null, getAuthHeader(thunkAPI.getState as () => RootState))
+      await axios.post(`${API_URL}/user-management/${id}/deactivate`, null, getAuthHeader(thunkAPI.getState as () => RootState))
       return id
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err 
@@ -193,7 +205,7 @@ export const reactivateUser = createAsyncThunk(
   'userManagement/reactivateUser',
   async (id: string, thunkAPI) => {
     try {
-      await axios.post(`${API_URL}/${id}/reactivate`, null, getAuthHeader(thunkAPI.getState as () => RootState))
+      await axios.post(`${API_URL}/user-management/${id}/reactivate`, null, getAuthHeader(thunkAPI.getState as () => RootState))
       return id
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err 
@@ -208,7 +220,7 @@ export const deleteUser = createAsyncThunk(
   'userManagement/deleteUser',
   async (id: string, thunkAPI) => {
     try {
-      await axios.delete(`${API_URL}/${id}`, getAuthHeader(thunkAPI.getState as () => RootState))
+      await axios.delete(`${API_URL}/user-management/${id}`, getAuthHeader(thunkAPI.getState as () => RootState))
       return id
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err 
@@ -223,7 +235,7 @@ export const resetUserPassword = createAsyncThunk(
   'userManagement/resetUserPassword',
   async (id: string, thunkAPI) => {
     try {
-      const response = await axios.post(`${API_URL}/${id}/reset-password`, null, getAuthHeader(thunkAPI.getState as () => RootState))
+      const response = await axios.post(`${API_URL}/user-management/${id}/reset-password`, null, getAuthHeader(thunkAPI.getState as () => RootState))
       return response.data
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err 
