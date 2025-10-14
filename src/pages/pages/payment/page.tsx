@@ -53,24 +53,15 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
-    // Redirect to Peach Payments hosted page with pre-filled data
+    // Redirect to Peach Payments for card entry only (minimal checkout)
     const peachPageUrl = process.env.NODE_ENV === 'production' 
       ? 'https://page.peachpayments.com/xnext' 
       : 'https://page.peachpayments.com/xnext';
     
-    // Build URL with pre-filled parameters to prevent customer editing
-    const params = new URLSearchParams({
-      checkoutId: paymentData.checkoutId,
-      entityId: paymentData.entityId,
-      amount: paymentData.amount || '1748.00',
-      currency: 'ZAR',
-      email: paymentData.email || 'jesse.mashoana@gmail.com',
-      reference: paymentData.reference || paymentData.orderId
-    });
+    // Use minimal URL - only checkoutId and entityId to avoid editable fields
+    const paymentUrl = `${peachPageUrl}?checkoutId=${paymentData.checkoutId}&entityId=${encodeURIComponent(paymentData.entityId)}`;
     
-    const paymentUrl = `${peachPageUrl}?${params.toString()}`;
-    
-    // Redirect to Peach Payments hosted checkout page with pre-filled data
+    // Redirect to Peach Payments for card entry (amount is already set in checkout)
     window.location.href = paymentUrl;
   };
 
