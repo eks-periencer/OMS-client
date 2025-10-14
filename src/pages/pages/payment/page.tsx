@@ -53,14 +53,24 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
-    // Redirect to Peach Payments hosted page (no authentication required)
+    // Redirect to Peach Payments hosted page with pre-filled data
     const peachPageUrl = process.env.NODE_ENV === 'production' 
       ? 'https://page.peachpayments.com/xnext' 
       : 'https://page.peachpayments.com/xnext';
     
-    const paymentUrl = `${peachPageUrl}?checkoutId=${paymentData.checkoutId}&entityId=${encodeURIComponent(paymentData.entityId)}`;
+    // Build URL with pre-filled parameters to prevent customer editing
+    const params = new URLSearchParams({
+      checkoutId: paymentData.checkoutId,
+      entityId: paymentData.entityId,
+      amount: paymentData.amount || '1748.00',
+      currency: 'ZAR',
+      email: paymentData.email || 'jesse.mashoana@gmail.com',
+      reference: paymentData.reference || paymentData.orderId
+    });
     
-    // Redirect to Peach Payments hosted checkout page
+    const paymentUrl = `${peachPageUrl}?${params.toString()}`;
+    
+    // Redirect to Peach Payments hosted checkout page with pre-filled data
     window.location.href = paymentUrl;
   };
 
