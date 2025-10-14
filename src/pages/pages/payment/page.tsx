@@ -53,24 +53,23 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
-    // Redirect to Peach Payments hosted page with pre-filled data
+    // Show a message that payment details are confirmed and redirect to card entry
+    alert('Payment details confirmed! You will now be redirected to enter your card details. The amount and order details cannot be changed.');
+    
+    // Redirect to Peach Payments hosted page (card details only)
     const peachPageUrl = process.env.NODE_ENV === 'production' 
       ? 'https://page.peachpayments.com/xnext' 
       : 'https://page.peachpayments.com/xnext';
     
-    // Build URL with pre-filled parameters to prevent customer editing
+    // Build URL with checkout ID and entity ID only (no pre-filled data to avoid editing)
     const params = new URLSearchParams({
       checkoutId: paymentData.checkoutId,
-      entityId: paymentData.entityId,
-      amount: paymentData.amount || '1748.00',
-      currency: 'ZAR',
-      email: paymentData.email || 'jesse.mashoana@gmail.com',
-      reference: paymentData.reference || paymentData.orderId
+      entityId: paymentData.entityId
     });
     
     const paymentUrl = `${peachPageUrl}?${params.toString()}`;
     
-    // Redirect to Peach Payments hosted checkout page with pre-filled data
+    // Redirect to Peach Payments hosted checkout page (amount and details are already set in checkout)
     window.location.href = paymentUrl;
   };
 
@@ -163,6 +162,12 @@ const PaymentPage: React.FC = () => {
           </div>
 
           {/* Payment Form - Pre-filled and Read-only */}
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800">
+              <strong>🔒 Locked Fields:</strong> The amount, email, and reference are pre-filled and cannot be changed to ensure payment security.
+            </p>
+          </div>
+          
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
