@@ -12,7 +12,7 @@ VITE_API_BASE_URL=https://<oms-host>
 
 # Onboarding service base used by the Payment Success screen
 # If omitted, the client will also look for window.__ONB_API_BASE_URL__ at runtime
-# and falls back to http://localhost:3003 for local dev
+# and falls back to https://microservices-oms.onrender.com for hosted dev
 VITE_ONB_BASE_URL=https://<onboarding-host>
 ```
 
@@ -26,8 +26,8 @@ Alternate runtime global (if you cannot rebuild):
 ```
 
 Defaults if unset:
-- `VITE_API_BASE_URL` → `http://localhost:3003`
-- `VITE_ONB_BASE_URL`/`window.__ONB_API_BASE_URL__` → `http://localhost:3003`
+- `VITE_API_BASE_URL` → `https://oms-server-ntlv.onrender.com`
+- `VITE_ONB_BASE_URL`/`window.__ONB_API_BASE_URL__` → `https://microservices-oms.onrender.com`
 
 ## Running locally
 

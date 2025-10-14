@@ -1,7 +1,9 @@
-import React from 'react'
 import '../styles/globals.css'
-import DashboardPage from './pages/pages/dashboard/page.tsx'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '../lib/auth'
+import { Toaster } from './components/components/ui/sonner'
+
+import DashboardPage from './pages/pages/dashboard/page.tsx'
 import OnboardingPage from './pages/pages/onboarding/page.tsx'
 import OnboardingDetailsPage from './pages/pages/onboarding/[id]/page.tsx'
 import SettingsPage from './pages/pages/admin/settings/page.tsx'
@@ -22,137 +24,43 @@ import CustomerDetailsPage from './pages/pages/customers/[id]/page.tsx'
 import EditCustomerPage from './pages/pages/customers/[id]/edit/page.tsx'
 import PaymentSuccessPage from './pages/pages/payment/success/page.tsx'
 import PaymentCancelledPage from './pages/pages/payment/cancelled/page.tsx'
-import { Toaster } from './components/components/ui/sonner'
+import PaymentPage from './pages/pages/payment/page.tsx'
 import { AuthGuard } from './components/AuthGuard'
-// import RegisterPage from './pages/pages/register/page.tsx'
-// import ForgotPasswordPage from './pages/pages/forgot-password/page.tsx'
-// import ResetPasswordPage from './pages/pages/reset-password/page.tsx'
-import { Routes, Route } from 'react-router-dom'
 
 function App() {
-
-  // Authentication is now handled by AuthGuard component and Redux state
-
-  // const [count, setCount] = useState(0)
-
   return (
     <>
-      {/* <Sidebar /> */}
       <AuthProvider>
         <Routes>
-          {/* Public routes - no authentication required */}
-          <Route path="/login" element={<LoginPage />} />
-          {/* <Route path="/register" element={<RegisterPage />} /> */}
-          {/* <Route path="/forgot-password" element={<ForgotPasswordPage />} /> */}
-          {/* <Route path="/reset-password" element={<ResetPasswordPage />} /> */}
+          {/* Root route redirect */}
+          <Route path='/' element={<Navigate to='/dashboard' replace />} />
           
-          {/* Protected routes - authentication required */}
-          <Route path="/" element={
-            <AuthGuard>
-              <DashboardPage />
-            </AuthGuard>
-          } />
-          <Route path="/dashboard" element={
-            <AuthGuard>
-              <DashboardPage />
-            </AuthGuard>
-          } />
-          <Route path="/onboarding" element={
-            <AuthGuard>
-              <OnboardingPage />
-            </AuthGuard>
-          } />
-          <Route path="/onboarding/:id" element={
-            <AuthGuard>
-              <OnboardingDetailsPage />
-            </AuthGuard>
-          } />
-          <Route path="/settings" element={
-            <AuthGuard>
-              <SettingsPage />
-            </AuthGuard>
-          } />
-          <Route path="/application-admin" element={
-            <AuthGuard>
-              <ApplicationAdminPage />
-            </AuthGuard>
-          } />
-          <Route path="/application-admin/:id" element={
-            <AuthGuard>
-              <ApplicationAdminDetailsPage />
-            </AuthGuard>
-          } />
-          <Route path="/fno" element={
-            <AuthGuard>
-              <FNOAdminPage />
-            </AuthGuard>
-          } />
-          <Route path="/fno/:id" element={
-            <AuthGuard>
-              <FNOAdminPage />
-            </AuthGuard>
-          } />
-          <Route path="/fno/create" element={
-            <AuthGuard>
-              <FnoCreatePage />
-            </AuthGuard>
-          } />
-          <Route path="/escalations" element={
-            <AuthGuard>
-              <Escalations/>
-            </AuthGuard>
-          } />
-          <Route path="/customers" element={
-            <AuthGuard>
-              <Customers/>
-            </AuthGuard>
-          } />
-          <Route path="/orders" element={
-            <AuthGuard>
-              <Orders/>
-            </AuthGuard>
-          } />
-          <Route path="/reports" element={
-            <AuthGuard>
-              <ReportsPage />
-            </AuthGuard>
-          } /> 
-          <Route path="/users" element={
-            <AuthGuard>
-              <UsersPage />
-            </AuthGuard>
-          } />
-          <Route path="/orders/create" element={
-            <AuthGuard>
-              <OrderCreate/>
-            </AuthGuard>
-          } />
-          <Route path="/orders/:id" element={
-            <AuthGuard>
-              <OrderDetailsPage />
-            </AuthGuard>
-          } />
-          <Route path='/customers/create' element={
-            <AuthGuard>
-              <CustomerCreate/>
-            </AuthGuard>
-          } />
-          <Route path='/customers/:id' element={
-            <AuthGuard>
-              <CustomerDetailsPage/>
-            </AuthGuard>
-          } />
-          <Route path='/customers/:id/edit' element={
-            <AuthGuard>
-              <EditCustomerPage/>
-            </AuthGuard>
-          } />
-          <Route path='/payment/success' element={
-            <PaymentSuccessPage />
-          } />
-          <Route path='/payment/cancelled' element={
-            <PaymentCancelledPage />
-          } />
+          {/* Public routes */}
+          <Route path='/login' element={<LoginPage />} />
+          <Route path='/payment' element={<PaymentPage />} />
+          <Route path='/payment/success' element={<PaymentSuccessPage />} />
+          <Route path='/payment/cancelled' element={<PaymentCancelledPage />} />
+
+          {/* Protected routes (wrapped per-route with AuthGuard) */}
+          <Route path='/dashboard' element={<AuthGuard><DashboardPage /></AuthGuard>} />
+          <Route path='/onboarding' element={<AuthGuard><OnboardingPage /></AuthGuard>} />
+          <Route path='/onboarding/:id' element={<AuthGuard><OnboardingDetailsPage /></AuthGuard>} />
+          <Route path='/admin/settings' element={<AuthGuard><SettingsPage /></AuthGuard>} />
+          <Route path='/application-admin' element={<AuthGuard><ApplicationAdminPage /></AuthGuard>} />
+          <Route path='/application-admin/:id' element={<AuthGuard><ApplicationAdminDetailsPage /></AuthGuard>} />
+          <Route path='/fno' element={<AuthGuard><FNOAdminPage /></AuthGuard>} />
+          <Route path='/fno/create' element={<AuthGuard><FnoCreatePage /></AuthGuard>} />
+          <Route path='/customers' element={<AuthGuard><Customers /></AuthGuard>} />
+          <Route path='/customers/create' element={<AuthGuard><CustomerCreate /></AuthGuard>} />
+          <Route path='/customers/:id' element={<AuthGuard><CustomerDetailsPage /></AuthGuard>} />
+          <Route path='/customers/:id/edit' element={<AuthGuard><EditCustomerPage /></AuthGuard>} />
+          <Route path='/orders' element={<AuthGuard><Orders /></AuthGuard>} />
+          <Route path='/orders/create' element={<AuthGuard><OrderCreate /></AuthGuard>} />
+          <Route path='/orders/:id' element={<AuthGuard><OrderDetailsPage /></AuthGuard>} />
+          <Route path='/reports' element={<AuthGuard><ReportsPage /></AuthGuard>} />
+          <Route path='/users' element={<AuthGuard><UsersPage /></AuthGuard>} />
+          <Route path='/escalations' element={<AuthGuard><Escalations /></AuthGuard>} />
+          <Route path='/settings' element={<AuthGuard><SettingsPage /></AuthGuard>} />
         </Routes>
         <Toaster />
       </AuthProvider>
