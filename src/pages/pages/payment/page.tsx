@@ -53,15 +53,14 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
-    // Redirect to Peach Payments hosted checkout
-    // The checkout is already created with the correct amount and customer data
-    const peachEndpoint = process.env.NODE_ENV === 'production' 
-      ? 'https://card.peachpayments.com' 
-      : 'https://sandbox-card.peachpayments.com';
+    // Redirect to Peach Payments hosted page (no authentication required)
+    const peachPageUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://page.peachpayments.com/xnext' 
+      : 'https://page.peachpayments.com/xnext';
     
-    const paymentUrl = `${peachEndpoint}/v1/checkouts/${paymentData.checkoutId}/payment?entityId=${encodeURIComponent(paymentData.entityId)}`;
+    const paymentUrl = `${peachPageUrl}?checkoutId=${paymentData.checkoutId}&entityId=${encodeURIComponent(paymentData.entityId)}`;
     
-    // Redirect to Peach Payments (amount and customer data are already set in the checkout)
+    // Redirect to Peach Payments hosted checkout page
     window.location.href = paymentUrl;
   };
 
