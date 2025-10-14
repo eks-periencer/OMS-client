@@ -172,34 +172,25 @@ const PaymentPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
               <div className="relative">
-                <input
-                  type="text"
-                  value={paymentData.amount}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-                />
+                <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed select-none">
+                  {paymentData.amount}
+                </div>
                 <span className="absolute right-3 top-2 text-sm text-gray-500">ZAR</span>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-              <input
-                type="email"
-                value={paymentData.email}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-              />
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed select-none">
+                {paymentData.email}
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Reference</label>
-              <input
-                type="text"
-                value={paymentData.reference}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
-              />
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed select-none">
+                {paymentData.reference}
+              </div>
             </div>
           </div>
 
