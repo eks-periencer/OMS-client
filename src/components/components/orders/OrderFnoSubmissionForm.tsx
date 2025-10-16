@@ -4,10 +4,12 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { Button } from '../ui/button'
-import { Loader2, Send } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+import { Loader2, Send, Play } from 'lucide-react'
 import Swal from 'sweetalert2'
 import { useOrders } from '@hooks/useOrders'
 import { listFNOs, submitOrderToFNO, type FNOItem } from '@lib/api/FNO.ts'
+import { simulateProvisioning } from '@lib/api/orders'
 
 interface OrderFnoSubmissionFormProps {
   order: any
@@ -23,6 +25,8 @@ export function OrderFnoSubmissionForm({ order, onUpdate }: OrderFnoSubmissionFo
   const [fnos, setFnos] = useState<FNOItem[]>([])
   const [loadingFnos, setLoadingFnos] = useState(false)
   const [submissionType, setSubmissionType] = useState<'api' | 'manual'>('manual')
+  const [installationStatus, setInstallationStatus] = useState<'new' | 'existing'>('new')
+  const [simulating, setSimulating] = useState(false)
 
   // Reactive snapshots from order (recompute if order prop changes)
   const serviceType = React.useMemo(() => (
@@ -71,6 +75,44 @@ export function OrderFnoSubmissionForm({ order, onUpdate }: OrderFnoSubmissionFo
     void load()
   }, [])
 
+  const handleSimulateFnoProvisioning = async () => {
+    setSimulating(true)
+    try {
+      const result = await simulateProvisioning(order.id, {
+        fno: fnoId ? fnos.find(f => f.id === fnoId)?.name : 'Openserve',
+        installationStatus,
+        stopAt: 'fno_accepted'
+      })
+
+      if (result?.converted) {
+        await Swal.fire({
+          icon: 'info',
+          title: 'Trial Converted to Regular',
+          text: 'This customer had an existing installation, so they were converted to a regular customer.',
+          timer: 3000,
+          showConfirmButton: false
+        })
+      } else {
+        await Swal.fire({
+          icon: 'success',
+          title: 'FNO Simulation Complete',
+          text: `Order advanced to ${result?.executed?.[result.executed.length - 1] || 'fno_accepted'} state.`,
+          timer: 2000,
+          showConfirmButton: false
+        })
+      }
+      onUpdate()
+    } catch (err: any) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Simulation Failed',
+        text: err?.message || 'Failed to simulate FNO provisioning'
+      })
+    } finally {
+      setSimulating(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -81,7 +123,10 @@ export function OrderFnoSubmissionForm({ order, onUpdate }: OrderFnoSubmissionFo
       if (!installStreet || !installCity || !installPostal) throw new Error('Missing installation address')
       if (!contactName || !contactEmail) throw new Error('Missing customer contact details')
 
-      // Submit to FNO first (backend will link FNO and advance state)
+      // Note: Trial qualification is now handled automatically during order creation
+      // based on customer's is_trial flag, no manual qualification needed here
+
+      // Submit to FNO (backend will link FNO and advance state)
       await submitOrderToFNO(fnoId, order.id, submissionType)
 
       // Optionally persist reference/notes after successful submission (avoid status side-effects)
@@ -119,6 +164,44 @@ export function OrderFnoSubmissionForm({ order, onUpdate }: OrderFnoSubmissionFo
         <CardDescription>Provide FNO details and submit the order</CardDescription>
       </CardHeader>
       <CardContent>
+        {/* FNO Simulation Section - visible for all orders */}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h4 className="font-medium text-blue-900 mb-3">FNO Provisioning Simulation</h4>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-4">
+              <div className="flex-1">
+                <Label htmlFor="installationStatus">Installation Status</Label>
+                <Select value={installationStatus} onValueChange={(value: 'new' | 'existing') => setInstallationStatus(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">New Installation (Proceed as Trial)</SelectItem>
+                    <SelectItem value="existing">Installation Exists (Convert to Regular)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button 
+                type="button" 
+                onClick={handleSimulateFnoProvisioning}
+                disabled={simulating}
+                variant="outline"
+              >
+                {simulating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Play className="mr-2 h-4 w-4" />
+                {simulating ? 'Simulating...' : 'Simulate to FNO Accepted'}
+              </Button>
+            </div>
+            <p className="text-xs text-blue-700">
+              {String(order?.service_details?.serviceType || '').toLowerCase() === 'trial'
+                ? (installationStatus === 'new' 
+                    ? 'This will proceed as a trial customer with installation workflow and stop at FNO Accepted.'
+                    : 'This will convert the customer to regular and remove trial status.')
+                : 'This will advance the order workflow to FNO Accepted (simulation).'}
+            </p>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

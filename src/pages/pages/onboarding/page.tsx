@@ -11,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/components/ui/tabs"
 import { Progress } from "../../../components/components/ui/progress"
 import { Plus, Search, Eye, UserCheck, TrendingUp } from "lucide-react"
+import Swal from 'sweetalert2'
+import { simulateProvisioning } from '../../../../lib/api/orders'
+import { listActiveTrials, executeCampaignDay, getCampaignSummaryByOrder, sendWelcome, transitionTrial } from '../../../../lib/api/trials'
 import { Link, useNavigate } from "react-router-dom"
 
 import { useOnboarding } from "../../../../hooks/useOnboarding"
@@ -352,6 +355,7 @@ export default function OnboardingPage() {
             <TabsList>
               <TabsTrigger value="onboarding">Active Onboarding</TabsTrigger>
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              {/* <TabsTrigger value="trials">Trial Management</TabsTrigger> */}
             </TabsList>
 
             <TabsContent value="onboarding" className="space-y-6">
@@ -534,6 +538,131 @@ export default function OnboardingPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Active Trials</span>
                       <span className="text-sm">{liveStats.trialCustomers}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="trials">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Trial Management</CardTitle>
+                    <CardDescription>End-to-end actions via Backend proxy</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="text-sm text-muted-foreground">Pick an active Trial to act on:</div>
+                    <div className="flex gap-2 items-center">
+                      <select id="trial-select" className="border rounded px-3 py-2 bg-background">
+                        <option value="">Select trial</option>
+                      </select>
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            const trials = await listActiveTrials()
+                            const sel = document.getElementById('trial-select') as HTMLSelectElement
+                            if (sel) {
+                              sel.innerHTML = '<option value=\"\">Select trial</option>'
+                              trials.forEach((t: any) => {
+                                const opt = document.createElement('option')
+                                opt.value = `${t.id}|${t.orderId}`
+                                opt.textContent = `${t.email} — ${String(t.orderId || '').slice(0,8)}`
+                                sel.appendChild(opt)
+                              })
+                              if (trials.length > 0 && !sel.value) sel.value = `${trials[0].id}|${trials[0].orderId}`
+                            }
+                            await Swal.fire({ icon: 'info', title: 'Loaded active trials', text: `${trials.length} found` })
+                          } catch (e: any) {
+                            Swal.fire({ icon: 'error', title: 'Failed to load trials', text: e?.message || 'Unknown error' })
+                          }
+                        }}
+                      >Load Active Trials</Button>
+                      <Button
+                        variant="secondary"
+                        onClick={async () => {
+                          const sel = document.getElementById('trial-select') as HTMLSelectElement
+                          if (!sel?.value) return Swal.fire({ icon: 'warning', title: 'Select a trial' })
+                          const [, orderId] = sel.value.split('|')
+                          try {
+                            await simulateProvisioning(orderId, { stopAt: 'fno_accepted', fno: 'Openserve' })
+                            await Swal.fire({ icon: 'success', title: 'Provisioned → FNO accepted' })
+                          } catch (e: any) {
+                            Swal.fire({ icon: 'error', title: 'Provisioning failed', text: e?.message || 'Unknown error' })
+                          }
+                        }}
+                      >Simulate to FNO Accepted</Button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          const sel = document.getElementById('trial-select') as HTMLSelectElement
+                          if (!sel?.value) return Swal.fire({ icon: 'warning', title: 'Select a trial' })
+                          const [, orderId] = sel.value.split('|')
+                          try {
+                            const summary = await getCampaignSummaryByOrder(orderId)
+                            await Swal.fire({ icon: 'info', title: 'Campaign Summary', html: `<pre style="text-align:left">${(summary ? JSON.stringify(summary, null, 2) : '{}').replace(/</g,'&lt;')}</pre>`, width: 800 })
+                          } catch (e: any) {
+                            Swal.fire({ icon: 'error', title: 'Failed to load summary', text: e?.message || 'Unknown error' })
+                          }
+                        }}
+                      >View Campaign Summary</Button>
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          const sel = document.getElementById('trial-select') as HTMLSelectElement
+                          if (!sel?.value) return Swal.fire({ icon: 'warning', title: 'Select a trial' })
+                          const [trialId] = sel.value.split('|')
+                          try {
+                            await sendWelcome(trialId)
+                            await Swal.fire({ icon: 'success', title: 'Welcome sent' })
+                          } catch (e: any) {
+                            Swal.fire({ icon: 'error', title: 'Welcome failed', text: e?.message || 'Unknown error' })
+                          }
+                        }}
+                      >Send Welcome</Button>
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await executeCampaignDay(7)
+                            await Swal.fire({ icon: 'success', title: 'Executed Day 7 (test mode)' })
+                          } catch (e: any) {
+                            Swal.fire({ icon: 'error', title: 'Execution failed', text: e?.message || 'Unknown error' })
+                          }
+                        }}
+                      >Execute Day 7</Button>
+                    </div>
+
+                    <div>
+                      <Button
+                        onClick={async () => {
+                          const sel = document.getElementById('trial-select') as HTMLSelectElement
+                          if (!sel?.value) return Swal.fire({ icon: 'warning', title: 'Select a trial' })
+                          const [trialId] = sel.value.split('|')
+                          try {
+                            await transitionTrial(trialId, 'convert', { planId: 'fiber-100' })
+                            await Swal.fire({ icon: 'success', title: 'Converted → Order activated' })
+                          } catch (e: any) {
+                            Swal.fire({ icon: 'error', title: 'Conversion failed', text: e?.message || 'Unknown error' })
+                          }
+                        }}
+                      >Convert Trial</Button>
+                    </div>
+
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Trial KPIs</CardTitle>
+                    <CardDescription>High-level stats (placeholder)</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Conversion Rate</span>
+                      <span className="text-sm">{liveStats.conversionRate}%</span>
                     </div>
                   </CardContent>
                 </Card>
