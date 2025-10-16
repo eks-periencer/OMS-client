@@ -510,7 +510,9 @@ export function Sidebar() {
           })}
         </nav>
         
-        {filteredAdminNavigation.length > 0 && user?.role_name === 'System Administrator' && (
+        {filteredAdminNavigation.length > 0 && (
+  (user?.role_name === 'System Administrator' || user?.role_name === 'Super Administrator' || user?.permissions?.includes?.('admin:manage_users'))
+) && (
   <>
     <Separator className="my-4" />
     <div className="space-y-1">
