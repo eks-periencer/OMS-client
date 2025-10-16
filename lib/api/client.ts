@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'https://oms-server-ntlv.onrender.com';
+const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3003';
 
 // Create a shared axios instance
 export const apiClient: AxiosInstance = axios.create({

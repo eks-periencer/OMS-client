@@ -49,6 +49,19 @@ export async function getTrialWorkflow(trialId: string) {
   return data?.data || data;
 }
 
+// New dedicated trial workflow endpoint - cleaner and more maintainable
+export async function getTrialWorkflowByOrder(orderId: string) {
+  const { data } = await api.get(`/trials/workflow/${orderId}`);
+  return data?.data || data;
+}
+
+export async function transitionTrialWorkflow(orderId: string, targetState: string) {
+  const { data } = await api.post(`/orders/${orderId}/trials/workflow/transition`, {
+    toState: targetState
+  });
+  return data?.data || data;
+}
+
 export async function transitionTrial(trialId: string, action: 'convert'|'cancel'|'expire', payload?: Record<string, unknown>) {
   const { data } = await api.post(`/trials/${trialId}/transition`, { action, ...(payload || {}) as Record<string, unknown> });
   return data?.data || data;

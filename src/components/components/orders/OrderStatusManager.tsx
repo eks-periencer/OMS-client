@@ -46,6 +46,30 @@ const statusTransitionsByType: Record<string, Record<string, string[]>> = {
     disconnected: ['completed'],
     completed: [],
     cancelled: []
+  },
+  trial: {
+    created: ['trial_order_created', 'cancelled'],
+    trial_order_created: ['trial_fno_provisioning', 'trial_cancelled'],
+    trial_fno_provisioning: ['trial_installation_pending', 'trial_cancelled'],
+    trial_installation_pending: ['trial_installation_scheduled', 'trial_cancelled'],
+    trial_installation_scheduled: ['trial_active', 'trial_cancelled'],
+    trial_device_shipping: ['trial_device_delivered', 'trial_cancelled'],
+    trial_device_delivered: ['trial_self_install', 'trial_cancelled'],
+    trial_self_install: ['trial_active', 'trial_cancelled'],
+    trial_active: ['trial_engaged', 'trial_expiring', 'trial_cancelled'],
+    trial_engaged: ['trial_expiring', 'trial_converted', 'trial_cancelled'],
+    trial_expiring: ['trial_converted', 'trial_expired', 'trial_cancelled'],
+    trial_converted: ['paid_service_installation_pending'],
+    trial_expired: [],
+    trial_cancelled: [],
+    paid_service_installation_pending: ['paid_service_installation_scheduled', 'cancelled'],
+    paid_service_installation_scheduled: ['paid_service_device_shipping', 'cancelled'],
+    paid_service_device_shipping: ['paid_service_device_delivered', 'cancelled'],
+    paid_service_device_delivered: ['paid_service_self_install', 'cancelled'],
+    paid_service_self_install: ['paid_service_active', 'cancelled'],
+    paid_service_active: ['completed'],
+    completed: [],
+    cancelled: []
   }
 }
 
@@ -67,7 +91,27 @@ const statusLabels: Record<string, string> = {
   'changed': 'Change Applied',
   // disconnect
   'disconnection_scheduled': 'Disconnection Scheduled',
-  'disconnected': 'Disconnected'
+  'disconnected': 'Disconnected',
+  // trial statuses
+  'trial_order_created': 'Trial Order Created',
+  'trial_fno_provisioning': 'Trial FNO Provisioning',
+  'trial_installation_pending': 'Trial Installation Pending',
+  'trial_installation_scheduled': 'Trial Installation Scheduled',
+  'trial_device_shipping': 'Trial Device Shipping',
+  'trial_device_delivered': 'Trial Device Delivered',
+  'trial_self_install': 'Trial Self Install',
+  'trial_active': 'Trial Active',
+  'trial_engaged': 'Trial Engaged',
+  'trial_expiring': 'Trial Expiring',
+  'trial_converted': 'Trial Converted',
+  'trial_expired': 'Trial Expired',
+  'trial_cancelled': 'Trial Cancelled',
+  'paid_service_installation_pending': 'Paid Service Installation Pending',
+  'paid_service_installation_scheduled': 'Paid Service Installation Scheduled',
+  'paid_service_device_shipping': 'Paid Service Device Shipping',
+  'paid_service_device_delivered': 'Paid Service Device Delivered',
+  'paid_service_self_install': 'Paid Service Self Install',
+  'paid_service_active': 'Paid Service Active'
 }
 
 const statusDescriptions: Record<string, string> = {
@@ -88,7 +132,27 @@ const statusDescriptions: Record<string, string> = {
   'changed': 'Service change applied successfully',
   // disconnect
   'disconnection_scheduled': 'Service disconnection has been scheduled',
-  'disconnected': 'Service has been disconnected'
+  'disconnected': 'Service has been disconnected',
+  // trial statuses
+  'trial_order_created': 'Trial order has been created and is ready for provisioning',
+  'trial_fno_provisioning': 'Trial order is being provisioned with the FNO',
+  'trial_installation_pending': 'Trial installation is pending scheduling',
+  'trial_installation_scheduled': 'Trial installation has been scheduled',
+  'trial_device_shipping': 'Trial device is being shipped to customer',
+  'trial_device_delivered': 'Trial device has been delivered to customer',
+  'trial_self_install': 'Customer is performing self-installation of trial device',
+  'trial_active': 'Trial service is active and customer can use it',
+  'trial_engaged': 'Customer is actively using the trial service',
+  'trial_expiring': 'Trial period is expiring soon',
+  'trial_converted': 'Trial has been converted to a paid service',
+  'trial_expired': 'Trial period has expired',
+  'trial_cancelled': 'Trial has been cancelled',
+  'paid_service_installation_pending': 'Paid service installation is pending',
+  'paid_service_installation_scheduled': 'Paid service installation has been scheduled',
+  'paid_service_device_shipping': 'Paid service device is being shipped',
+  'paid_service_device_delivered': 'Paid service device has been delivered',
+  'paid_service_self_install': 'Customer is performing self-installation of paid service',
+  'paid_service_active': 'Paid service is active and operational'
 }
 
 export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps) {
@@ -101,7 +165,16 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
 
   const currentState = (order?.current_state || order?.currentState || order?.status || 'created') as string
   const orderType = (order?.order_type || order?.orderType || 'new_install') as string
-  const mapForType = statusTransitionsByType[orderType] || statusTransitionsByType['new_install']
+  
+  // Check if this is a trial order based on service details or current state
+  const isTrialOrder = order?.service_details?.serviceType?.toLowerCase() === 'trial' ||
+                      order?.service_details?.service_type?.toLowerCase() === 'trial' ||
+                      order?.serviceType?.toLowerCase() === 'trial' ||
+                      currentState.startsWith('trial_') ||
+                      currentState.startsWith('paid_service_')
+  
+  const effectiveOrderType = isTrialOrder ? 'trial' : orderType
+  const mapForType = statusTransitionsByType[effectiveOrderType] || statusTransitionsByType['new_install']
   const validTransitionsFromWorkflow = (workflowState?.transitions || []).map((t: any) => t.toState)
   const baseTransitions = (validTransitionsFromWorkflow.length > 0
     ? validTransitionsFromWorkflow
@@ -201,7 +274,7 @@ export function OrderStatusManager({ order, onUpdate }: OrderStatusManagerProps)
                 <div className="flex flex-wrap gap-1 mt-1">
                   {workflowState.transitions.filter((t: any) => !!t?.toState).map((transition: any) => (
                     <Badge key={transition.toState} variant="secondary" className="text-xs">
-                      {statusLabels[transition.toState] || transition.toState.replace(/_/g, ' ')}
+                      {statusLabels[transition.toState] || String(transition.toState || '').replace(/_/g, ' ')}
                     </Badge>
                   ))}
                 </div>

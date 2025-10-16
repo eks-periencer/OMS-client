@@ -111,6 +111,8 @@ export async function getOrder(id: string): Promise<OrderItem> {
     customer_id: rawOrder.customer_id ?? rawOrder.customerId ?? '',
     order_type: rawOrder.order_type ?? rawOrder.orderType ?? 'new_install',
     priority: rawOrder.priority ?? 'normal',
+    service_type: rawOrder.service_type ?? rawOrder.serviceType ?? '',
+    service_package: rawOrder.service_package ?? rawOrder.servicePackage ?? '',
     current_state: rawOrder.current_state ?? rawOrder.currentState ?? rawOrder.status ?? 'created',
     fno_id: rawOrder.fno_id ?? rawOrder.fnoId ?? '',
     fno_reference: rawOrder.fno_reference ?? rawOrder.fnoReference ?? '',
@@ -144,9 +146,18 @@ export async function deleteOrder(id: string): Promise<void> {
 
 export async function getOrderWorkflowState(id: string): Promise<{ state: string; transitions: Array<{ toState: string; name?: string }> }> {
   const { data } = await api.get(`/orders/${id}/workflow/state`);
+  
+  // Handle different response formats
+  const responseData = data?.data || data;
+  const state = responseData?.currentState || responseData?.state || 'created';
+  const nextStates = responseData?.nextStates || responseData?.transitions || [];
+  
+  // Convert nextStates array to transitions format
+  const transitions = nextStates.map((state: string) => ({ toState: state }));
+  
   return {
-    state: data?.state || data?.data?.state || 'created',
-    transitions: data?.transitions || data?.data?.transitions || []
+    state,
+    transitions
   };
 }
 
