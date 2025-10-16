@@ -507,10 +507,6 @@ export default function UsersPage() {
               )}
             </TableBody>
           </Table>
-          {(filteredUsers?.length || 0) === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No users found matching your criteria.</p>
-            </div>
           )}
         </CardContent>
       </Card>

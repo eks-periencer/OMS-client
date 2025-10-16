@@ -1,7 +1,7 @@
 import '../styles/globals.css'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '../lib/auth'
-import { Toaster } from './components/components/ui/sonner'
+// import { Toaster } from './components/components/ui/sonner'
 
 import DashboardPage from './pages/pages/dashboard/page.tsx'
 import OnboardingPage from './pages/pages/onboarding/page.tsx'
@@ -24,13 +24,11 @@ import CustomerDetailsPage from './pages/pages/customers/[id]/page.tsx'
 import EditCustomerPage from './pages/pages/customers/[id]/edit/page.tsx'
 import PaymentSuccessPage from './pages/pages/payment/success/page.tsx'
 import PaymentCancelledPage from './pages/pages/payment/cancelled/page.tsx'
-<<<<<<< HEAD
 import TrialAnalyticsPage from './pages/pages/trial-analytics/page.tsx'
 import { Toaster } from './components/components/ui/sonner'
-=======
 import PaymentPage from './pages/pages/payment/page.tsx'
->>>>>>> 09447d19dae119a2c349c1326e1c9b2b2f959a09
 import { AuthGuard } from './components/AuthGuard'
+import ServiceCheckerPage from './pages/pages/service-checker/page.tsx'
 
 function App() {
   return (
@@ -40,7 +38,6 @@ function App() {
           {/* Root route redirect */}
           <Route path='/' element={<Navigate to='/dashboard' replace />} />
           
-<<<<<<< HEAD
           {/* Protected routes - authentication required */}
           <Route path="/" element={
             <AuthGuard>
@@ -153,13 +150,17 @@ function App() {
               <TrialAnalyticsPage />
             </AuthGuard>
           } />
-=======
+          <Route path='/service-checker' element={
+            <AuthGuard>
+              <ServiceCheckerPage />
+            </AuthGuard>
+          } />
           {/* Public routes */}
           <Route path='/login' element={<LoginPage />} />
           <Route path='/payment' element={<PaymentPage />} />
           <Route path='/payment/success' element={<PaymentSuccessPage />} />
           <Route path='/payment/cancelled' element={<PaymentCancelledPage />} />
-
+          <Route path='/service-checker' element={<ServiceCheckerPage />} />
           {/* Protected routes (wrapped per-route with AuthGuard) */}
           <Route path='/dashboard' element={<AuthGuard><DashboardPage /></AuthGuard>} />
           <Route path='/onboarding' element={<AuthGuard><OnboardingPage /></AuthGuard>} />
@@ -180,7 +181,6 @@ function App() {
           <Route path='/users' element={<AuthGuard><UsersPage /></AuthGuard>} />
           <Route path='/escalations' element={<AuthGuard><Escalations /></AuthGuard>} />
           <Route path='/settings' element={<AuthGuard><SettingsPage /></AuthGuard>} />
->>>>>>> 09447d19dae119a2c349c1326e1c9b2b2f959a09
         </Routes>
         
         <Toaster />

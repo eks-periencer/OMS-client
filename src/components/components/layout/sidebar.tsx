@@ -25,6 +25,7 @@ import {
   BarChart3,
   Network,
   Bell,
+  Monitor,
 } from "lucide-react"
 import { logout } from "../../../toolkit/authSlice"
 import {
@@ -34,6 +35,7 @@ import {
 } from "../ui/popover"
 import { getMyNotifications, markNotificationsRead, deleteNotifications, deleteAllNotifications, type NotificationItem } from "../../../../lib/api/notifications"
 import { useNavigate } from "react-router-dom"
+
 
 
 interface NavItem {
@@ -97,6 +99,12 @@ const navigation: NavItem[] = [
     href: "/reports",
     icon: FileText,
     permission: "orders:read",
+  },
+  {
+    title: "Service Checker",
+    href: "/service-checker",
+    icon: Monitor,
+    permission: "service_checker:view",
   },
 ]
 
